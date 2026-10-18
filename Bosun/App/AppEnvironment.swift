@@ -12,13 +12,32 @@ final class AppEnvironment {
     let settingsVM: SettingsViewModel
 
     var sandbox: Sandbox?
+    var symbolIndex: SymbolIndex?
+    var toolRuntime: ToolRuntime?
+    
     var projectRoot: URL? {
         didSet {
             if let root = projectRoot {
-                sandbox = Sandbox(rootURL: root)
+                let box = Sandbox(rootURL: root)
+                let idx = SymbolIndex(rootURL: root)
+                self.sandbox = box
+                self.symbolIndex = idx
+                
+                let tools: [AgentTool] = [
+                    ListDirTool(sandbox: box),
+                    ReadFileTool(sandbox: box),
+                    SearchTool(sandbox: box),
+                    FindSymbolTool(index: idx),
+                    ListSymbolsTool(sandbox: box, index: idx)
+                ]
+                self.toolRuntime = ToolRuntime(registry: ToolRegistry(tools: tools))
                 settings.projectRootPath = root.path
+                
+                Task { try? await idx.rebuild() }
             } else {
                 sandbox = nil
+                symbolIndex = nil
+                toolRuntime = nil
                 settings.projectRootPath = nil
             }
         }
