@@ -10,8 +10,10 @@ struct ChatView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(vm.messages) { msg in
-                            MessageBubble(message: msg)
-                                .id(msg.id)
+                            if !msg.content.isEmpty {
+                                MessageBubble(message: msg)
+                                    .id(msg.id)
+                            }
                             
                             // Отрисовываем карточки инструментов
                             if let calls = msg.toolCalls {
