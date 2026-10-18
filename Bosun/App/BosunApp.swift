@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct BosunApp: App {
     @State private var env = AppEnvironment()
-    
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -17,7 +17,7 @@ struct BosunApp: App {
         }
         .windowStyle(.titleBar)
         .commands { CommandGroup(replacing: .newItem) {} }
-        
+
         Settings {
             SettingsView().environment(env)
         }

@@ -2,13 +2,28 @@ import Foundation
 
 actor ProjectMap {
     private let rootURL: URL
+    private var cachedTree: String?
     
     init(rootURL: URL) {
         self.rootURL = rootURL
     }
     
-    /// Возвращает текстовое дерево проекта (исключая мусор)
-    func buildTree() async -> String {
+    /// Возвращает текстовое дерево (из кэша, если есть)
+    func getTree() async -> String {
+        if let cached = cachedTree { return cached }
+        let tree = await buildTree()
+        cachedTree = tree
+        return tree
+    }
+    
+    /// Принудительно пересобирает дерево
+    func refreshTree() async -> String {
+        let tree = await buildTree()
+        cachedTree = tree
+        return tree
+    }
+    
+    private func buildTree() async -> String {
         var result = "\(rootURL.lastPathComponent)/\n"
         let children = await getChildren(of: rootURL)
         result += formatTree(nodes: children, prefix: "")
@@ -30,7 +45,7 @@ actor ProjectMap {
         for fileURL in contents {
             let name = fileURL.lastPathComponent
             if ExcludedPaths.names.contains(name) { continue }
-            if name.hasPrefix(".") { continue } // пропускаем скрытые
+            if name.hasPrefix(".") { continue }
             
             let isDir = (try? fileURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
             if isDir {
@@ -41,7 +56,6 @@ actor ProjectMap {
             }
         }
         
-        // Сортировка: папки сверху, потом файлы, по алфавиту
         return nodes.sorted {
             if $0.isDirectory != $1.isDirectory { return $0.isDirectory }
             return $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending

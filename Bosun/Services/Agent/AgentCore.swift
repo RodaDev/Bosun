@@ -24,19 +24,20 @@ actor AgentCore {
     func run(history: [ChatMessage]) async throws -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
-                // 1. Строим дерево проекта
-                let tree = await projectMap?.buildTree()
+                let tree = await projectMap?.getTree()
                 let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree)
                 
-                // 2. Формируем историю: System + User/Assistant...
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
-                messages.append(contentsOf: history)
+                
+                // Берем только последние 20 сообщений, чтобы не раздувать контекст
+                let recentHistory = history.suffix(20)
+                messages.append(contentsOf: recentHistory)
                 
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
                 
-                for _ in 0..<8 { // Увеличили лимит, так как карта дает больше автономности
+                for _ in 0..<8 {
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
                     
