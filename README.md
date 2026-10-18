@@ -1,2 +1,21 @@
 # Bosun
-OpenRouter based Mac OS app
+
+Bosun — это нативный macOS-клиент для ИИ-агента (OpenRouter), который помогает писать код. 
+Он работает локально, имеет доступ к вашему проекту (через безопасную песочницу) и умеет читать, искать и изменять файлы.
+
+## Возможности
+- 🔒 **Безопасность**: Все изменения файлов проходят через Diff-подтверждение.
+- 🧠 **Понимание контекста**: При запуске строит карту проекта и кэширует промпты.
+- 🛠 **Инструменты**: `read_file`, `search`, `edit_file`, `run_xcodebuild` и др.
+- 🚀 **Нативный SwiftUI**: Никакого Electron, только чистый Swift.
+
+## Установка
+1. Скачайте последний релиз из раздела Releases.
+2. Перетащите `Bosun.app` в папку `Applications`.
+3. Запустите и введите свой [OpenRouter API Key](https://openrouter.ai/keys).
+
+## Сборка из исходников
+```bash
+brew install xcodegen
+make build
+open .build/Build/Products/Debug/Bosun.app
