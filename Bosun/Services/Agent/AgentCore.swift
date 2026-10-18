@@ -24,13 +24,12 @@ actor AgentCore {
     func run(history: [ChatMessage]) async throws -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
-                let tree = await projectMap?.getTree()
+                let tree = await projectMap?.getTextTree()
                 let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree)
                 
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
                 
-                // Берем только последние 20 сообщений, чтобы не раздувать контекст
                 let recentHistory = history.suffix(20)
                 messages.append(contentsOf: recentHistory)
                 
@@ -55,6 +54,9 @@ actor AgentCore {
                             }
                             if let tcs = chunk.toolCalls {
                                 accumulatedToolCalls.append(contentsOf: tcs)
+                            }
+                            if let usage = chunk.usage {
+                                continuation.yield(.usage(prompt: usage.promptTokens, completion: usage.completionTokens, cached: usage.cachedTokens))
                             }
                             if chunk.isDone { break }
                         }

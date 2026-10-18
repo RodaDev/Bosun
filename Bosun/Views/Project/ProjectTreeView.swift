@@ -1,44 +1,18 @@
 import SwiftUI
-import AppKit
 
 struct ProjectTreeView: View {
     @Environment(AppEnvironment.self) private var env
-    @State private var isRefreshing = false
 
     var body: some View {
-        VStack {
-            if let root = env.projectRoot {
-                List {
-                    Section {
-                        Text(root.lastPathComponent)
-                            .font(.headline)
-                    }
-                    
-                    Section("Действия") {
-                        Button {
-                            isRefreshing = true
-                            Task {
-                                if let map = env.projectMap {
-                                    _ = await map.refreshTree()
-                                }
-                                if let idx = env.symbolIndex {
-                                    try? await idx.rebuild()
-                                }
-                                isRefreshing = false
-                            }
-                        } label: {
-                            HStack {
-                                if isRefreshing {
-                                    ProgressView().controlSize(.small)
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                }
-                                Text("Обновить карту проекта")
-                            }
-                        }
-                        .disabled(isRefreshing)
-                        
-                        Button("Сменить проект") { selectFolder() }
+        VStack(spacing: 0) {
+            if env.projectRoot != nil {
+                List(env.chatVM.projectNodes, children: \.children) { node in
+                    HStack(spacing: 6) {
+                        Image(systemName: node.isDirectory ? "folder" : "doc.text")
+                            .foregroundStyle(node.isDirectory ? Color.accentColor : .secondary)
+                        Text(node.name)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(node.isModified ? .orange : .primary)
                     }
                 }
                 .listStyle(.sidebar)
@@ -46,21 +20,30 @@ struct ProjectTreeView: View {
                 Spacer()
                 Text("Проект не выбран")
                     .foregroundStyle(.secondary)
-                Button("Открыть проект") { selectFolder() }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.top)
                 Spacer()
             }
+            
+            Divider()
+            
+            // Плашка с токенами
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Токены (сессия)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Image(systemName: "arrow.up.circle")
+                    Text("\(env.chatVM.totalPromptTokens)")
+                    Spacer()
+                    Image(systemName: "arrow.down.circle")
+                    Text("\(env.chatVM.totalCompletionTokens)")
+                }
+                .font(.system(.caption, design: .monospaced))
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.1))
         }
-    }
-
-    private func selectFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url {
-            env.projectRoot = url
+        .onAppear {
+            Task { await env.chatVM.loadTree(from: env.projectMap) }
         }
     }
 }

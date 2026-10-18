@@ -11,8 +11,14 @@ final class ChatViewModel {
     var error: String?
     var selectedModelId: String?
     
+    // Стейт для UI
+    var projectNodes: [ProjectNode] = []
     var activeToolCalls: [ToolCall] = []
     var completedToolCalls: [ToolResult] = []
+    
+    // Статистика токенов
+    var totalPromptTokens: Int = 0
+    var totalCompletionTokens: Int = 0
     
     var pendingApprovals: [ApprovalRequest] = []
     private var approvalContinuation: CheckedContinuation<Bool, Never>?
@@ -32,6 +38,12 @@ final class ChatViewModel {
 
     var canSend: Bool {
         !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil
+    }
+
+    func loadTree(from map: ProjectMap?) async {
+        if let map = map {
+            self.projectNodes = await map.getTreeNodes()
+        }
     }
 
     func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?) {
@@ -79,12 +91,22 @@ final class ChatViewModel {
                             textBuffer = ""
                             self.streamingText = ""
                             self.activeToolCalls.append(call)
+                            
+                            // Если это мутирующий инструмент — помечаем файл
+                            if call.function.name == "edit_file" || call.function.name == "write_file" {
+                                // В идеале нужно обновлять ProjectNode, но для простоты перезапросим дерево
+                            }
                         }
                         
                     case .toolResult(let res):
                         await MainActor.run {
                             self.activeToolCalls.removeAll { $0.id == res.toolCallId }
                             self.completedToolCalls.append(res)
+                        }
+                    case .usage(let prompt, let completion, _):
+                        await MainActor.run {
+                            self.totalPromptTokens += prompt
+                            self.totalCompletionTokens += completion
                         }
                     case .done:
                         break
@@ -101,6 +123,7 @@ final class ChatViewModel {
                     }
                     self.streamingText = ""
                     self.isRunning = false
+                    Task { await self.loadTree(from: projectMap) }
                 }
             } catch {
                 await MainActor.run {

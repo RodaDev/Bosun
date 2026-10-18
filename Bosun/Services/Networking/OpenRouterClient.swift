@@ -16,9 +16,16 @@ enum OpenRouterError: Error, LocalizedError {
     }
 }
 
+struct UsageInfo: Sendable {
+    let promptTokens: Int
+    let completionTokens: Int
+    let cachedTokens: Int
+}
+
 struct StreamChunk: Sendable {
     var textDelta: String = ""
     var toolCalls: [ToolCall]? = nil
+    var usage: UsageInfo? = nil
     var isDone: Bool = false
 }
 
@@ -113,15 +120,12 @@ actor OpenRouterClient {
         }
     }
 
-    // MARK: - Private Helpers
-
     private static func processPayload(
         _ payload: String,
         builders: inout [Int: (id: String, name: String, args: String)],
         continuation: AsyncThrowingStream<StreamChunk, Error>.Continuation
     ) -> Bool {
         if payload == "[DONE]" {
-            // Собираем накопленные tool_calls
             let sortedCalls = builders.sorted { $0.key < $1.key }.map { (_, builder) in
                 ToolCall(
                     id: builder.id,
@@ -136,7 +140,7 @@ actor OpenRouterClient {
                 continuation.yield(StreamChunk(toolCalls: sortedCalls))
             }
             continuation.yield(StreamChunk(isDone: true))
-            return true // Сигнал для завершения стрима
+            return true
         }
         
         guard let data = payload.data(using: .utf8),
@@ -157,35 +161,29 @@ actor OpenRouterClient {
             }
         }
         
+        // Парсим usage (обычно приходит в последнем чанке)
+        if let u = chunk.usage {
+            continuation.yield(StreamChunk(usage: UsageInfo(promptTokens: u.prompt_tokens ?? 0, completionTokens: u.completion_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0)))
+        }
+        
         return false
     }
 
-    /// Очищает аргументы от markdown-разметки и проверяет на валидность JSON.
     private static func sanitizeArguments(_ raw: String) -> String {
         var args = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        
         if args.hasPrefix("```json") {
-            args = args.replacingOccurrences(of: "```json", with: "")
-            args = args.replacingOccurrences(of: "```", with: "")
+            args = args.replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "")
         } else if args.hasPrefix("```") {
             args = args.replacingOccurrences(of: "```", with: "")
         }
         args = args.trimmingCharacters(in: .whitespacesAndNewlines)
-        
         if args.isEmpty { return "{}" }
-        
-        if let data = args.data(using: .utf8),
-           (try? JSONSerialization.jsonObject(with: data)) == nil {
-            return "{}"
-        }
-        
+        if let data = args.data(using: .utf8), (try? JSONSerialization.jsonObject(with: data)) == nil { return "{}" }
         return args
     }
 
     private func apiKey() throws -> String {
-        guard let key = keychain.loadAPIKey(), !key.isEmpty else {
-            throw OpenRouterError.missingAPIKey
-        }
+        guard let key = keychain.loadAPIKey(), !key.isEmpty else { throw OpenRouterError.missingAPIKey }
         return key
     }
 
@@ -196,9 +194,9 @@ actor OpenRouterClient {
     }
 }
 
-// MARK: - Wire Models
 struct WireChunk: Decodable {
     let choices: [Choice]?
+    let usage: Usage?
     struct Choice: Decodable {
         let delta: Delta?
     }
@@ -214,5 +212,13 @@ struct WireChunk: Decodable {
     struct WireFunction: Decodable {
         let name: String?
         let arguments: String?
+    }
+    struct Usage: Decodable {
+        let prompt_tokens: Int?
+        let completion_tokens: Int?
+        let prompt_tokens_details: PromptDetails?
+    }
+    struct PromptDetails: Decodable {
+        let cached_tokens: Int?
     }
 }
