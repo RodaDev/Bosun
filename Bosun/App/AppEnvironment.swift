@@ -22,6 +22,7 @@ final class AppEnvironment {
                 let box = Sandbox(rootURL: root)
                 let idx = SymbolIndex(rootURL: root)
                 let map = ProjectMap(rootURL: root)
+                let runner = XcodeBuildRunner(rootURL: root)
                 
                 self.sandbox = box
                 self.symbolIndex = idx
@@ -34,7 +35,8 @@ final class AppEnvironment {
                     FindSymbolTool(index: idx),
                     ListSymbolsTool(sandbox: box, index: idx),
                     WriteFileTool(sandbox: box),
-                    EditFileTool(sandbox: box)
+                    EditFileTool(sandbox: box),
+                    RunXcodebuildTool(runner: runner)
                 ]
                 self.toolRuntime = ToolRuntime(registry: ToolRegistry(tools: tools))
                 settings.projectRootPath = root.path

@@ -30,6 +30,7 @@
 		50733DA77A0173D9AA1CC8AA /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = D590BBFB00D9C06A2326F10A /* MessageBubble.swift */; };
 		50866AFF155203CCA749898B /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B295CD4EFD6A55D7260AA2AC /* KeychainStore.swift */; };
 		56069294DADD0073C252F37C /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CD4B03769456C76588F099 /* RootView.swift */; };
+		5F865F6B4B644759C3E75F2C /* RunXcodebuildTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */; };
 		664CF6EBA5FA0862DBEB947E /* ModelPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F1A66DC8D0ABDA4D343268 /* ModelPickerViewModel.swift */; };
 		666EC666470491E7E14FC5BD /* ReadFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF2CF0960D982F1079064F7 /* ReadFileTool.swift */; };
 		6EBBA00D526FF428E37C4646 /* SymbolParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C705296F80784EBD18FFB745 /* SymbolParser.swift */; };
@@ -45,6 +46,7 @@
 		A71D647998EE83E1E3B84BB2 /* ListDirTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4940B18F043306924EB942A1 /* ListDirTool.swift */; };
 		ABD89E88D9B68AB8B0AE6861 /* ToolRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A62A522AB6F6918980874C /* ToolRuntime.swift */; };
 		AEDC11E39B3E186FC90E31D5 /* Sandbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD095FD3A23E0794093A349 /* Sandbox.swift */; };
+		B2F3B9D780E6AC694E610A79 /* XcodeBuildRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F55686036FC63BE15BB5183 /* XcodeBuildRunner.swift */; };
 		B30EEC4BC2B013437B1DC1E1 /* ToolResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC79418187631E8E6BC36F9 /* ToolResult.swift */; };
 		B3F0351A70AD1C2F1351C8BA /* OpenRouterTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B156B54B8F38A1F74CC6DC7 /* OpenRouterTransport.swift */; };
 		B717CC7DD410D59E0A0323B5 /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9085137A0CD009BB383703CE /* PromptBuilder.swift */; };
@@ -80,6 +82,7 @@
 		2658B3862A554B6CC76D3EE3 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		296F80DDF45762174BB70413 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		2BD095FD3A23E0794093A349 /* Sandbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sandbox.swift; sourceTree = "<group>"; };
+		2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunXcodebuildTool.swift; sourceTree = "<group>"; };
 		31CD4B03769456C76588F099 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		41A767DCCA8F69BB3F8396BA /* ApprovalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalSheet.swift; sourceTree = "<group>"; };
 		43A43B8053891C6F3045F8ED /* ListSymbolsTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListSymbolsTool.swift; sourceTree = "<group>"; };
@@ -92,6 +95,7 @@
 		5BF5270DEE91E9AFDDE58E3F /* ExcludedPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcludedPaths.swift; sourceTree = "<group>"; };
 		5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditFileTool.swift; sourceTree = "<group>"; };
 		60511E18F9DD125EF3164717 /* AgentTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
+		6F55686036FC63BE15BB5183 /* XcodeBuildRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildRunner.swift; sourceTree = "<group>"; };
 		75B3E02C015759BB3D725F16 /* OpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterClient.swift; sourceTree = "<group>"; };
 		799C2749877212D190E0D37A /* SearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTool.swift; sourceTree = "<group>"; };
 		7A8159B8D204B4098937D3C5 /* MockTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTransport.swift; sourceTree = "<group>"; };
@@ -214,6 +218,14 @@
 			path = Mutating;
 			sourceTree = "<group>";
 		};
+		8C2851C932CABF17EF1B6CEF /* Build */ = {
+			isa = PBXGroup;
+			children = (
+				6F55686036FC63BE15BB5183 /* XcodeBuildRunner.swift */,
+			);
+			path = Build;
+			sourceTree = "<group>";
+		};
 		A5A448058A61C03D41728EBD /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -223,6 +235,14 @@
 				31CD4B03769456C76588F099 /* RootView.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		A77464521507A8600F5C6F23 /* Build */ = {
+			isa = PBXGroup;
+			children = (
+				2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */,
+			);
+			path = Build;
 			sourceTree = "<group>";
 		};
 		A814F52E1FBE7A6514ED4D10 /* Networking */ = {
@@ -311,6 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				226262AE35EDFBD59548F426 /* Agent */,
+				8C2851C932CABF17EF1B6CEF /* Build */,
 				78C3B0133C9C2DD858EEC76E /* Index */,
 				A814F52E1FBE7A6514ED4D10 /* Networking */,
 				D1400DFCF4FA097876D94ADC /* Sandbox */,
@@ -332,6 +353,7 @@
 		F588179B0589EF2739002C1D /* Tools */ = {
 			isa = PBXGroup;
 			children = (
+				A77464521507A8600F5C6F23 /* Build */,
 				8C0D413695B6CB41A5024334 /* Mutating */,
 				3F20B7931058E50E1E996966 /* ReadOnly */,
 				60511E18F9DD125EF3164717 /* AgentTool.swift */,
@@ -503,6 +525,7 @@
 				B717CC7DD410D59E0A0323B5 /* PromptBuilder.swift in Sources */,
 				666EC666470491E7E14FC5BD /* ReadFileTool.swift in Sources */,
 				56069294DADD0073C252F37C /* RootView.swift in Sources */,
+				5F865F6B4B644759C3E75F2C /* RunXcodebuildTool.swift in Sources */,
 				E7F2724F7BD3563F29A4E20D /* SSEParser.swift in Sources */,
 				AEDC11E39B3E186FC90E31D5 /* Sandbox.swift in Sources */,
 				41263F927D21140314EB3F24 /* SearchTool.swift in Sources */,
@@ -519,6 +542,7 @@
 				ABD89E88D9B68AB8B0AE6861 /* ToolRuntime.swift in Sources */,
 				D6819F7450C93C906CD0471C /* URLSessionTransport.swift in Sources */,
 				42A15CADC643C62C9F8D587B /* WriteFileTool.swift in Sources */,
+				B2F3B9D780E6AC694E610A79 /* XcodeBuildRunner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
