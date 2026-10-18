@@ -25,8 +25,28 @@ struct ProjectTreeView: View {
             
             Divider()
             
-            // Плашка с токенами
-            VStack(alignment: .leading, spacing: 4) {
+            // Плашка с токенами и балансом
+            VStack(alignment: .leading, spacing: 6) {
+                // Баланс
+                HStack {
+                    Text("Баланс:")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let bal = env.chatVM.remainingBalance {
+                        Text(String(format: "$%.4f", bal))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(bal > 0 ? .green : .red)
+                    } else {
+                        Text("—")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Divider()
+                
+                // Токены
                 Text("Токены (сессия)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -43,7 +63,10 @@ struct ProjectTreeView: View {
             .background(Color.black.opacity(0.1))
         }
         .onAppear {
-            Task { await env.chatVM.loadTree(from: env.projectMap) }
+            Task {
+                await env.chatVM.loadTree(from: env.projectMap)
+                await env.chatVM.refreshBalance()
+            }
         }
     }
 }

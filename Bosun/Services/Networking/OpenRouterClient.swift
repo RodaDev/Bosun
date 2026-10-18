@@ -58,6 +58,25 @@ actor OpenRouterClient {
             throw OpenRouterError.decoding("\(error)")
         }
     }
+    
+    func fetchCredits() async throws -> Double {
+        let request = HTTPRequest(
+            url: baseURL.appending(path: "credits"),
+            method: "GET",
+            headers: ["Authorization": "Bearer \(try apiKey())"]
+        )
+        let response = try await transport.send(request)
+        let data = try await collect(response.body)
+        guard response.statusCode == 200 else {
+            throw OpenRouterError.server(status: response.statusCode, body: String(data: data, encoding: .utf8) ?? "")
+        }
+        do {
+            let decoded = try JSONDecoder().decode(TotalCreditsResponse.self, from: data)
+            return decoded.data.total_credits - decoded.data.total_usage
+        } catch {
+            throw OpenRouterError.decoding("\(error)")
+        }
+    }
 
     func streamCompletion(
         model: String,
@@ -220,5 +239,23 @@ struct WireChunk: Decodable {
     }
     struct PromptDetails: Decodable {
         let cached_tokens: Int?
+    }
+}
+
+struct CreditsResponse: Decodable {
+    let data: CreditsData
+    struct CreditsData: Decodable {
+        let limit: Double?
+        let usage: Double?
+        let limit_remaining: Double?
+    }
+}
+
+struct TotalCreditsResponse: Decodable {
+    let data: Data
+    
+    struct Data: Decodable {
+        let total_credits: Double
+        let total_usage: Double
     }
 }

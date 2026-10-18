@@ -19,6 +19,7 @@ final class ChatViewModel {
     // Статистика токенов
     var totalPromptTokens: Int = 0
     var totalCompletionTokens: Int = 0
+    var remainingBalance: Double? = nil
     
     var pendingApprovals: [ApprovalRequest] = []
     private var approvalContinuation: CheckedContinuation<Bool, Never>?
@@ -123,6 +124,7 @@ final class ChatViewModel {
                     }
                     self.streamingText = ""
                     self.isRunning = false
+                    Task { await self.refreshBalance() }
                     Task { await self.loadTree(from: projectMap) }
                 }
             } catch {
@@ -143,6 +145,15 @@ final class ChatViewModel {
         currentTask = nil
         isRunning = false
         resolveApproval(approved: false)
+    }
+    
+    func refreshBalance() async {
+        do {
+            let remaining = try await client.fetchCredits()
+            self.remainingBalance = remaining
+        } catch {
+            print("Ошибка загрузки баланса: \(error)")
+        }
     }
     
     private func requestApproval(_ reqs: [ApprovalRequest]) async -> Bool {
