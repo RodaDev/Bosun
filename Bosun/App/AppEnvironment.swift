@@ -13,6 +13,7 @@ final class AppEnvironment {
 
     var sandbox: Sandbox?
     var symbolIndex: SymbolIndex?
+    var projectMap: ProjectMap?
     var toolRuntime: ToolRuntime?
     
     var projectRoot: URL? {
@@ -20,8 +21,11 @@ final class AppEnvironment {
             if let root = projectRoot {
                 let box = Sandbox(rootURL: root)
                 let idx = SymbolIndex(rootURL: root)
+                let map = ProjectMap(rootURL: root)
+                
                 self.sandbox = box
                 self.symbolIndex = idx
+                self.projectMap = map
                 
                 let tools: [AgentTool] = [
                     ListDirTool(sandbox: box),
@@ -39,6 +43,7 @@ final class AppEnvironment {
             } else {
                 sandbox = nil
                 symbolIndex = nil
+                projectMap = nil
                 toolRuntime = nil
                 settings.projectRootPath = nil
             }

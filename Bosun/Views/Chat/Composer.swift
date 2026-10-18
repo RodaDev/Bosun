@@ -26,14 +26,16 @@ struct Composer: View {
                 TextField("Сообщение агенту…", text: $vm.draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
-                    .onSubmit { vm.send(toolRuntime: env.toolRuntime) }
+                    .onSubmit { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap) }
+                
                 if vm.isRunning && vm.streamingText.isEmpty {
                     ProgressView()
                         .controlSize(.small)
                         .padding(.bottom, 4)
                 }
+                
                 Button {
-                    vm.send(toolRuntime: env.toolRuntime)
+                    vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.title2)
                 }

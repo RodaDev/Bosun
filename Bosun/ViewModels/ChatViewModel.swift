@@ -34,7 +34,7 @@ final class ChatViewModel {
         !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil
     }
 
-    func send(toolRuntime: ToolRuntime?) {
+    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?) {
         guard canSend, let model = selectedModelId else { return }
         
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -52,6 +52,7 @@ final class ChatViewModel {
             client: client,
             runtime: toolRuntime,
             model: model,
+            projectMap: projectMap,
             approvalHandler: { [weak self] reqs in
                 guard let self = self else { return false }
                 return await self.requestApproval(reqs)
@@ -60,7 +61,7 @@ final class ChatViewModel {
         let history = messages
 
         currentTask = Task {
-            var textBuffer = "" // <--- Объявлен здесь, виден в catch
+            var textBuffer = ""
             
             do {
                 let stream = try await core.run(history: history)
@@ -74,7 +75,6 @@ final class ChatViewModel {
                         
                     case .toolCallStarted(let call):
                         await MainActor.run {
-                            // Сохраняем текст ВМЕСТЕ с toolCall, чтобы карточка не исчезла
                             self.messages.append(ChatMessage(role: .assistant, content: textBuffer, toolCalls: [call]))
                             textBuffer = ""
                             self.streamingText = ""
@@ -104,7 +104,6 @@ final class ChatViewModel {
                 }
             } catch {
                 await MainActor.run {
-                    // Сохраняем текст, даже если произошла ошибка!
                     if !textBuffer.isEmpty {
                         self.messages.append(ChatMessage(role: .assistant, content: textBuffer))
                     }
@@ -122,8 +121,6 @@ final class ChatViewModel {
         isRunning = false
         resolveApproval(approved: false)
     }
-    
-    // MARK: - Approval Logic
     
     private func requestApproval(_ reqs: [ApprovalRequest]) async -> Bool {
         let allApproved = reqs.allSatisfy { sessionApprovedTools.contains($0.toolName) }

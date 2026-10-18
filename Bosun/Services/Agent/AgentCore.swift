@@ -4,35 +4,46 @@ actor AgentCore {
     private let client: OpenRouterClient
     private let runtime: ToolRuntime?
     private let model: String
-    private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool // <--- Массив!
+    private let projectMap: ProjectMap?
+    private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool
     
     init(
         client: OpenRouterClient,
         runtime: ToolRuntime?,
         model: String,
+        projectMap: ProjectMap?,
         approvalHandler: @Sendable @escaping ([ApprovalRequest]) async -> Bool
     ) {
         self.client = client
         self.runtime = runtime
         self.model = model
+        self.projectMap = projectMap
         self.approvalHandler = approvalHandler
     }
     
     func run(history: [ChatMessage]) async throws -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
-                var messages = history
+                // 1. Строим дерево проекта
+                let tree = await projectMap?.buildTree()
+                let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree)
+                
+                // 2. Формируем историю: System + User/Assistant...
+                var messages: [ChatMessage] = []
+                messages.append(ChatMessage(role: .system, content: systemPrompt))
+                messages.append(contentsOf: history)
+                
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
                 
-                for _ in 0..<5 {
+                for _ in 0..<8 { // Увеличили лимит, так как карта дает больше автономности
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
                     
                     do {
                         let stream = try await client.streamCompletion(
-                            model: model,
-                            messages: messages,
+                            model: model, 
+                            messages: messages, 
                             tools: useTools ? tools : nil
                         )
                         
@@ -63,7 +74,6 @@ actor AgentCore {
                     messages.append(assistantMsg)
                     
                     if let runtime = runtime {
-                        // 1. Собираем пачку запросов на подтверждение
                         let requests = await runtime.prepareApprovals(for: accumulatedToolCalls)
                         var approved = true
                         
@@ -71,7 +81,6 @@ actor AgentCore {
                             approved = await approvalHandler(requests)
                         }
                         
-                        // 2. Выполняем
                         for call in accumulatedToolCalls {
                             continuation.yield(.toolCallStarted(call))
                             let result: ToolResult
@@ -94,7 +103,7 @@ actor AgentCore {
                     }
                 }
                 
-                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Превышен лимит вызовов (5)"]))
+                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Превышен лимит вызовов (8)"]))
             }
             continuation.onTermination = { _ in task.cancel() }
         }
