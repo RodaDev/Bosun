@@ -28,7 +28,9 @@ final class AppEnvironment {
                     ReadFileTool(sandbox: box),
                     SearchTool(sandbox: box),
                     FindSymbolTool(index: idx),
-                    ListSymbolsTool(sandbox: box, index: idx)
+                    ListSymbolsTool(sandbox: box, index: idx),
+                    WriteFileTool(sandbox: box),
+                    EditFileTool(sandbox: box)
                 ]
                 self.toolRuntime = ToolRuntime(registry: ToolRegistry(tools: tools))
                 settings.projectRootPath = root.path
@@ -56,7 +58,6 @@ final class AppEnvironment {
         self.modelPickerVM = ModelPickerViewModel(client: client)
         self.settingsVM = SettingsViewModel(settings: settings, keychain: keychain)
 
-        // Синхронизация: если в Keychain пусто, сбрасываем флаг
         if self.keychain.loadAPIKey() == nil {
             self.settings.hasAPIKey = false
         }

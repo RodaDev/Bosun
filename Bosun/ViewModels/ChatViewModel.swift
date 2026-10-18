@@ -11,9 +11,12 @@ final class ChatViewModel {
     var error: String?
     var selectedModelId: String?
     
-    // Для UI карточек инструментов
     var activeToolCalls: [ToolCall] = []
     var completedToolCalls: [ToolResult] = []
+    
+    var pendingApprovals: [ApprovalRequest] = []
+    private var approvalContinuation: CheckedContinuation<Bool, Never>?
+    var sessionApprovedTools: Set<String> = []
     
     private let settings: SettingsStore
     private let keychain: KeychainStore
@@ -30,7 +33,7 @@ final class ChatViewModel {
     var canSend: Bool {
         !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil
     }
-    
+
     func send(toolRuntime: ToolRuntime?) {
         guard canSend, let model = selectedModelId else { return }
         
@@ -40,17 +43,27 @@ final class ChatViewModel {
         streamingText = ""
         activeToolCalls = []
         completedToolCalls = []
+        pendingApprovals = []
         
         messages.append(ChatMessage(role: .user, content: text))
         isRunning = true
-        
-        let core = AgentCore(client: client, runtime: toolRuntime, model: model)
+
+        let core = AgentCore(
+            client: client,
+            runtime: toolRuntime,
+            model: model,
+            approvalHandler: { [weak self] reqs in
+                guard let self = self else { return false }
+                return await self.requestApproval(reqs)
+            }
+        )
         let history = messages
-        
+
         currentTask = Task {
+            var textBuffer = "" // <--- Объявлен здесь, виден в catch
+            
             do {
                 let stream = try await core.run(history: history)
-                var textBuffer = ""
                 
                 for try await event in stream {
                     if Task.isCancelled { break }
@@ -58,8 +71,16 @@ final class ChatViewModel {
                     case .textDelta(let delta):
                         textBuffer += delta
                         await MainActor.run { self.streamingText = textBuffer }
+                        
                     case .toolCallStarted(let call):
-                        await MainActor.run { self.activeToolCalls.append(call) }
+                        await MainActor.run {
+                            // Сохраняем текст ВМЕСТЕ с toolCall, чтобы карточка не исчезла
+                            self.messages.append(ChatMessage(role: .assistant, content: textBuffer, toolCalls: [call]))
+                            textBuffer = ""
+                            self.streamingText = ""
+                            self.activeToolCalls.append(call)
+                        }
+                        
                     case .toolResult(let res):
                         await MainActor.run {
                             self.activeToolCalls.removeAll { $0.id == res.toolCallId }
@@ -83,6 +104,10 @@ final class ChatViewModel {
                 }
             } catch {
                 await MainActor.run {
+                    // Сохраняем текст, даже если произошла ошибка!
+                    if !textBuffer.isEmpty {
+                        self.messages.append(ChatMessage(role: .assistant, content: textBuffer))
+                    }
                     self.error = error.localizedDescription
                     self.streamingText = ""
                     self.isRunning = false
@@ -95,5 +120,29 @@ final class ChatViewModel {
         currentTask?.cancel()
         currentTask = nil
         isRunning = false
+        resolveApproval(approved: false)
+    }
+    
+    // MARK: - Approval Logic
+    
+    private func requestApproval(_ reqs: [ApprovalRequest]) async -> Bool {
+        let allApproved = reqs.allSatisfy { sessionApprovedTools.contains($0.toolName) }
+        if allApproved { return true }
+        
+        return await withCheckedContinuation { continuation in
+            self.pendingApprovals = reqs
+            self.approvalContinuation = continuation
+        }
+    }
+    
+    func resolveApproval(approved: Bool, allowSession: Bool = false) {
+        if approved && allowSession {
+            for req in pendingApprovals {
+                sessionApprovedTools.insert(req.toolName)
+            }
+        }
+        approvalContinuation?.resume(returning: approved)
+        approvalContinuation = nil
+        pendingApprovals = []
     }
 }

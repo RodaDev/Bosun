@@ -18,7 +18,7 @@ struct ToolCallCard: View {
                 }
             }
             
-            Text(call.function.arguments)
+            Text(call.function.arguments.prefix(80) + (call.function.arguments.count > 80 ? "..." : ""))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

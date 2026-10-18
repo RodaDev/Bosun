@@ -27,6 +27,11 @@ struct Composer: View {
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
                     .onSubmit { vm.send(toolRuntime: env.toolRuntime) }
+                if vm.isRunning && vm.streamingText.isEmpty {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(.bottom, 4)
+                }
                 Button {
                     vm.send(toolRuntime: env.toolRuntime)
                 } label: {

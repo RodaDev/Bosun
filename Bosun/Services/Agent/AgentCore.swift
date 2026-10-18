@@ -4,11 +4,18 @@ actor AgentCore {
     private let client: OpenRouterClient
     private let runtime: ToolRuntime?
     private let model: String
+    private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool // <--- Массив!
     
-    init(client: OpenRouterClient, runtime: ToolRuntime?, model: String) {
+    init(
+        client: OpenRouterClient,
+        runtime: ToolRuntime?,
+        model: String,
+        approvalHandler: @Sendable @escaping ([ApprovalRequest]) async -> Bool
+    ) {
         self.client = client
         self.runtime = runtime
         self.model = model
+        self.approvalHandler = approvalHandler
     }
     
     func run(history: [ChatMessage]) async throws -> AsyncThrowingStream<AgentEvent, Error> {
@@ -55,23 +62,39 @@ actor AgentCore {
                     let assistantMsg = ChatMessage(role: .assistant, content: accumulatedText, toolCalls: accumulatedToolCalls)
                     messages.append(assistantMsg)
                     
-                    for call in accumulatedToolCalls {
-                        continuation.yield(.toolCallStarted(call))
-                        if let runtime = runtime {
-                            let result = await runtime.execute(call)
+                    if let runtime = runtime {
+                        // 1. Собираем пачку запросов на подтверждение
+                        let requests = await runtime.prepareApprovals(for: accumulatedToolCalls)
+                        var approved = true
+                        
+                        if !requests.isEmpty {
+                            approved = await approvalHandler(requests)
+                        }
+                        
+                        // 2. Выполняем
+                        for call in accumulatedToolCalls {
+                            continuation.yield(.toolCallStarted(call))
+                            let result: ToolResult
+                            if approved {
+                                result = await runtime.execute(call)
+                            } else {
+                                result = ToolResult.error(call.id, "Пользователь отклонил изменения.")
+                            }
+                            
                             continuation.yield(.toolResult(result))
-                            let toolMsg = ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId)
-                            messages.append(toolMsg)
-                        } else {
-                            let result = ToolResult.error(call.id, "Инструменты недоступны (проект не выбран)")
+                            messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
+                        }
+                    } else {
+                        for call in accumulatedToolCalls {
+                            continuation.yield(.toolCallStarted(call))
+                            let result = ToolResult.error(call.id, "Инструменты недоступны")
                             continuation.yield(.toolResult(result))
-                            let toolMsg = ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId)
-                            messages.append(toolMsg)
+                            messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
                         }
                     }
                 }
                 
-                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Превышен лимит вызовов инструментов (5)"]))
+                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Превышен лимит вызовов (5)"]))
             }
             continuation.onTermination = { _ in task.cancel() }
         }

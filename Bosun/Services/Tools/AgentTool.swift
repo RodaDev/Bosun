@@ -1,6 +1,5 @@
 import Foundation
 
-/// Схема параметров в формате JSON Schema (совместимо с OpenRouter/OpenAI)
 struct ToolParameter: Codable, Sendable {
     let type: String
     let description: String
@@ -26,15 +25,20 @@ struct ToolDefinition: Codable, Sendable {
 
 protocol AgentTool: Sendable {
     var definition: ToolDefinition { get }
+    var requiresApproval: Bool { get }
     func execute(arguments: String) async throws -> String
+    func prepareApproval(arguments: String) async throws -> ApprovalRequest?
 }
 
-// Вспомогательная функция для парсинга аргументов
 extension AgentTool {
+    // По умолчанию read-only
+    var requiresApproval: Bool { false }
+    
     func decodeArgs<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
         guard let data = json.data(using: .utf8) else {
             throw NSError(domain: "Tool", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid UTF8 in arguments"])
         }
         return try JSONDecoder().decode(T.self, from: data)
     }
+    func prepareApproval(arguments: String) async throws -> ApprovalRequest? { return nil }
 }

@@ -9,19 +9,20 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
-                        ForEach(vm.messages) { MessageBubble(message: $0).id($0.id) }
-                        
-                        // Активные вызовы
-                        ForEach(vm.activeToolCalls) { call in
-                            ToolCallCard(call: call, result: nil)
-                        }
-                        
-                        // Завершенные вызовы
-                        ForEach(vm.completedToolCalls, id: \.toolCallId) { res in
-                            // (В реальном проекте мы бы связали call и result по id, 
-                            // здесь для простоты покажем заглушку, если не нашли call)
-                            if let call = vm.messages.last(where: { $0.toolCalls?.contains(where: { $0.id == res.toolCallId }) == true })?.toolCalls?.first(where: { $0.id == res.toolCallId }) {
-                                ToolCallCard(call: call, result: res)
+                        ForEach(vm.messages) { msg in
+                            MessageBubble(message: msg)
+                                .id(msg.id)
+                            
+                            // Отрисовываем карточки инструментов
+                            if let calls = msg.toolCalls {
+                                ForEach(calls) { call in
+                                    // Ищем результат для этого вызова
+                                    if let res = vm.completedToolCalls.first(where: { $0.toolCallId == call.id }) {
+                                        ToolCallCard(call: call, result: res)
+                                    } else {
+                                        ToolCallCard(call: call, result: nil)
+                                    }
+                                }
                             }
                         }
 
@@ -37,7 +38,9 @@ struct ChatView: View {
                     .padding(16)
                 }
                 .onChange(of: vm.messages.count) { _, _ in
-                    if let last = vm.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                    if let last = vm.messages.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
                 }
                 .onChange(of: vm.streamingText) { _, _ in
                     proxy.scrollTo("stream", anchor: .bottom)
@@ -54,6 +57,13 @@ struct ChatView: View {
             }
 
             Composer(vm: vm, env: env)
+        }
+        .sheet(isPresented: .init(get: { !vm.pendingApprovals.isEmpty }, set: { _ in })) {
+            ApprovalSheet(
+                requests: vm.pendingApprovals,
+                onApprove: { allowSession in vm.resolveApproval(approved: true, allowSession: allowSession) },
+                onReject: { vm.resolveApproval(approved: false) }
+            )
         }
     }
 }
