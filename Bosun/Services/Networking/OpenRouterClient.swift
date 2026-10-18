@@ -1,10 +1,3 @@
-//
-//  OpenRouterClient.swift
-//  Bosun
-//
-//  Created by Dmitry on 18.10.2026.
-//
-
 import Foundation
 
 enum OpenRouterError: Error, LocalizedError {
@@ -24,10 +17,8 @@ enum OpenRouterError: Error, LocalizedError {
 }
 
 struct StreamChunk: Sendable {
-    var textDelta: String
-    var promptTokens: Int?
-    var completionTokens: Int?
-    var cachedTokens: Int?
+    var textDelta: String = ""
+    var toolCalls: [ToolCall]? = nil
     var isDone: Bool = false
 }
 
@@ -63,14 +54,17 @@ actor OpenRouterClient {
 
     func streamCompletion(
         model: String,
-        messages: [ChatMessage]
+        messages: [ChatMessage],
+        tools: [[String: Any]]?
     ) async throws -> AsyncThrowingStream<StreamChunk, Error> {
         let payload = ChatCompletionRequest(
             model: model,
             messages: messages.map(\.wire),
-            stream: true
+            stream: true,
+            tools: tools?.map { AnyCodable($0) }
         )
         let data = try JSONEncoder().encode(payload)
+
         let request = HTTPRequest(
             url: baseURL.appending(path: "chat/completions"),
             method: "POST",
@@ -94,16 +88,19 @@ actor OpenRouterClient {
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var parser = SSEParser()
+                var toolCallBuilders: [Int: (id: String, name: String, args: String)] = [:]
+                
                 do {
                     for try await raw in response.body {
                         for payload in parser.feed(raw) {
-                            if payload == "[DONE]" {
-                                continuation.yield(StreamChunk(textDelta: "", isDone: true))
+                            let isDone = Self.processPayload(
+                                payload,
+                                builders: &toolCallBuilders,
+                                continuation: continuation
+                            )
+                            if isDone {
                                 continuation.finish()
                                 return
-                            }
-                            if let chunk = Self.decodeChunk(payload) {
-                                continuation.yield(chunk)
                             }
                         }
                     }
@@ -114,6 +111,75 @@ actor OpenRouterClient {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    // MARK: - Private Helpers
+
+    private static func processPayload(
+        _ payload: String,
+        builders: inout [Int: (id: String, name: String, args: String)],
+        continuation: AsyncThrowingStream<StreamChunk, Error>.Continuation
+    ) -> Bool {
+        if payload == "[DONE]" {
+            // Собираем накопленные tool_calls
+            let sortedCalls = builders.sorted { $0.key < $1.key }.map { (_, builder) in
+                ToolCall(
+                    id: builder.id,
+                    type: "function",
+                    function: ToolCall.Function(
+                        name: builder.name,
+                        arguments: sanitizeArguments(builder.args)
+                    )
+                )
+            }
+            if !sortedCalls.isEmpty {
+                continuation.yield(StreamChunk(toolCalls: sortedCalls))
+            }
+            continuation.yield(StreamChunk(isDone: true))
+            return true // Сигнал для завершения стрима
+        }
+        
+        guard let data = payload.data(using: .utf8),
+              let chunk = try? JSONDecoder().decode(WireChunk.self, from: data) else {
+            return false
+        }
+        
+        if let text = chunk.choices?.first?.delta?.content, !text.isEmpty {
+            continuation.yield(StreamChunk(textDelta: text))
+        }
+        
+        if let tcs = chunk.choices?.first?.delta?.tool_calls {
+            for tc in tcs {
+                var builder = builders[tc.index] ?? (id: tc.id ?? UUID().uuidString, name: "", args: "")
+                if let n = tc.function?.name, !n.isEmpty { builder.name = n }
+                if let a = tc.function?.arguments { builder.args += a }
+                builders[tc.index] = builder
+            }
+        }
+        
+        return false
+    }
+
+    /// Очищает аргументы от markdown-разметки и проверяет на валидность JSON.
+    private static func sanitizeArguments(_ raw: String) -> String {
+        var args = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if args.hasPrefix("```json") {
+            args = args.replacingOccurrences(of: "```json", with: "")
+            args = args.replacingOccurrences(of: "```", with: "")
+        } else if args.hasPrefix("```") {
+            args = args.replacingOccurrences(of: "```", with: "")
+        }
+        args = args.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if args.isEmpty { return "{}" }
+        
+        if let data = args.data(using: .utf8),
+           (try? JSONSerialization.jsonObject(with: data)) == nil {
+            return "{}"
+        }
+        
+        return args
     }
 
     private func apiKey() throws -> String {
@@ -128,32 +194,25 @@ actor OpenRouterClient {
         for try await d in stream { out.append(d) }
         return out
     }
+}
 
-    private static func decodeChunk(_ payload: String) -> StreamChunk? {
-        struct Wire: Decodable {
-            struct Choice: Decodable {
-                struct Delta: Decodable { let content: String? }
-                let delta: Delta?
-            }
-            struct Usage: Decodable {
-                let prompt_tokens: Int?
-                let completion_tokens: Int?
-                let prompt_tokens_details: Details?
-                struct Details: Decodable { let cached_tokens: Int? }
-            }
-            let choices: [Choice]?
-            let usage: Usage?
-        }
-        guard let data = payload.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(Wire.self, from: data) else {
-            return nil
-        }
-        let text = decoded.choices?.first?.delta?.content ?? ""
-        return StreamChunk(
-            textDelta: text,
-            promptTokens: decoded.usage?.prompt_tokens,
-            completionTokens: decoded.usage?.completion_tokens,
-            cachedTokens: decoded.usage?.prompt_tokens_details?.cached_tokens
-        )
+// MARK: - Wire Models
+struct WireChunk: Decodable {
+    let choices: [Choice]?
+    struct Choice: Decodable {
+        let delta: Delta?
+    }
+    struct Delta: Decodable {
+        let content: String?
+        let tool_calls: [WireToolCall]?
+    }
+    struct WireToolCall: Decodable {
+        let index: Int
+        let id: String?
+        let function: WireFunction?
+    }
+    struct WireFunction: Decodable {
+        let name: String?
+        let arguments: String?
     }
 }

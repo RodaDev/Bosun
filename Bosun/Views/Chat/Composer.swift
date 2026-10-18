@@ -1,15 +1,8 @@
-//
-//  Composer.swift
-//  Bosun
-//
-//  Created by Dmitry on 18.10.2026.
-//
-
 import SwiftUI
 
 struct Composer: View {
     @Bindable var vm: ChatViewModel
-    @Environment(AppEnvironment.self) private var env
+    var env: AppEnvironment
     @State private var showPicker = false
 
     var body: some View {
@@ -33,9 +26,9 @@ struct Composer: View {
                 TextField("Сообщение агенту…", text: $vm.draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
-                    .onSubmit { vm.send() }
+                    .onSubmit { vm.send(toolRuntime: env.toolRuntime) }
                 Button {
-                    vm.send()
+                    vm.send(toolRuntime: env.toolRuntime)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.title2)
                 }

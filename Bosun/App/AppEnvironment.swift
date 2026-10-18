@@ -56,6 +56,11 @@ final class AppEnvironment {
         self.modelPickerVM = ModelPickerViewModel(client: client)
         self.settingsVM = SettingsViewModel(settings: settings, keychain: keychain)
 
+        // Синхронизация: если в Keychain пусто, сбрасываем флаг
+        if self.keychain.loadAPIKey() == nil {
+            self.settings.hasAPIKey = false
+        }
+
         if let path = settings.projectRootPath {
             self.projectRoot = URL(fileURLWithPath: path)
         }

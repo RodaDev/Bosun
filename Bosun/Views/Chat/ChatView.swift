@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatView: View {
     @Bindable var vm: ChatViewModel
+    @Environment(AppEnvironment.self) private var env
 
     var body: some View {
         VStack(spacing: 0) {
@@ -9,10 +10,26 @@ struct ChatView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(vm.messages) { MessageBubble(message: $0).id($0.id) }
+                        
+                        // Активные вызовы
+                        ForEach(vm.activeToolCalls) { call in
+                            ToolCallCard(call: call, result: nil)
+                        }
+                        
+                        // Завершенные вызовы
+                        ForEach(vm.completedToolCalls, id: \.toolCallId) { res in
+                            // (В реальном проекте мы бы связали call и result по id, 
+                            // здесь для простоты покажем заглушку, если не нашли call)
+                            if let call = vm.messages.last(where: { $0.toolCalls?.contains(where: { $0.id == res.toolCallId }) == true })?.toolCalls?.first(where: { $0.id == res.toolCallId }) {
+                                ToolCallCard(call: call, result: res)
+                            }
+                        }
+
                         if !vm.streamingText.isEmpty {
                             MessageBubble(message: ChatMessage(role: .assistant, content: vm.streamingText))
                                 .id("stream")
                         }
+                        
                         if let err = vm.error {
                             Text(err).foregroundStyle(.red).font(.callout)
                         }
@@ -26,15 +43,17 @@ struct ChatView: View {
                     proxy.scrollTo("stream", anchor: .bottom)
                 }
             }
-            if let stats = vm.cacheStats {
-                HStack {
-                    Text("prompt: \(stats.promptTokens) · cached: \(stats.cachedTokens) · completion: \(stats.completionTokens)")
-                        .font(.caption2).foregroundStyle(.secondary)
-                    Spacer()
-                }.padding(.horizontal, 12)
-            }
+            
             Divider()
-            Composer(vm: vm)
+            
+            if env.projectRoot == nil {
+                Text("Выберите проект слева, чтобы агент мог использовать инструменты.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(.top, 8)
+            }
+
+            Composer(vm: vm, env: env)
         }
     }
 }

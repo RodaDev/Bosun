@@ -19,6 +19,7 @@ struct ModelPickerSheet: View {
                 Spacer()
                 Button("Обновить") { Task { await vm.load(force: true) } }
                     .disabled(vm.isLoading)
+                Button("Закрыть") { dismiss() } 
             }
 
             Toggle("Только с tools", isOn: $vm.toolsOnly)

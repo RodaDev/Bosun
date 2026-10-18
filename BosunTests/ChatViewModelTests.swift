@@ -27,7 +27,7 @@ final class ChatViewModelTests: XCTestCase {
         let vm = ChatViewModel(settings: settings, keychain: keychain, client: client)
         vm.selectedModelId = "test/model"
         vm.draft = "hi"
-        vm.send()
+        vm.send(toolRuntime: nil)
 
         let expectation = expectation(description: "stream finished")
         Task {
