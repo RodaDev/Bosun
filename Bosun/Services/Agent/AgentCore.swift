@@ -21,7 +21,8 @@ actor AgentCore {
         self.approvalHandler = approvalHandler
     }
     
-    func run(history: [ChatMessage]) async throws -> AsyncThrowingStream<AgentEvent, Error> {
+    // Основной цикл
+    func run(history: [ChatMessage], sessionContext: [ChatMessage] = []) async throws -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 let tree = await projectMap?.getTextTree()
@@ -30,13 +31,20 @@ actor AgentCore {
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
                 
-                let recentHistory = history.suffix(20)
-                messages.append(contentsOf: recentHistory)
+                // Если есть сохраненный контекст сессии (после сбоя), используем его
+                if !sessionContext.isEmpty {
+                    messages.append(contentsOf: sessionContext)
+                } else {
+                    // Иначе берем историю UI (сжимаем, если она слишком длинная)
+                    let contextToSend = await compressIfNeeded(history: history)
+                    messages.append(contentsOf: contextToSend)
+                }
                 
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
                 
-                for _ in 0..<8 {
+                // Динамический лимит: 25 шагов
+                for step in 0..<25 {
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
                     
@@ -61,6 +69,8 @@ actor AgentCore {
                             if chunk.isDone { break }
                         }
                     } catch {
+                        // В случае ошибки (например, таймаута) сохраняем контекст
+                        continuation.yield(.checkpoint(messages))
                         continuation.finish(throwing: error)
                         return
                     }
@@ -104,11 +114,44 @@ actor AgentCore {
                             messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
                         }
                     }
+                    
+                    // Сохраняем контекст после каждого успешного шага
+                    continuation.yield(.checkpoint(messages))
+                    
+                    // Защита от зацикливания (если агент 25 раз вызывает один и тот же инструмент)
+                    if step == 24 {
+                        continuation.yield(.checkpoint(messages))
+                        continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Достигнут лимит шагов (25). Вы можете продолжить диалог."]))
+                        return
+                    }
                 }
-                
-                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Превышен лимит вызовов (8)"]))
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+    
+    // Сжатие контекста, если история слишком длинная
+    private func compressIfNeeded(history: [ChatMessage]) async -> [ChatMessage] {
+        if history.count <= 15 {
+            return history
+        }
+        
+        // Берем последние 5 сообщений, остальные суммируем
+        let toSummarize = Array(history.prefix(history.count - 5))
+        let recent = Array(history.suffix(5))
+        
+        var summaryText = "Краткая сводка предыдущих действий:\n"
+        for msg in toSummarize {
+            if msg.role == .user {
+                summaryText += "- Пользователь: \(msg.content.prefix(100))\n"
+            } else if msg.role == .assistant, !msg.content.isEmpty {
+                summaryText += "- Ассистент: \(msg.content.prefix(100))\n"
+            } else if msg.role == .tool {
+                summaryText += "- Инструмент выполнен.\n"
+            }
+        }
+        
+        let summaryMsg = ChatMessage(role: .system, content: summaryText)
+        return [summaryMsg] + recent
     }
 }

@@ -11,6 +11,9 @@ final class ChatViewModel {
     var error: String?
     var selectedModelId: String?
     
+    // Контекст сессии для восстановления
+    var sessionContext: [ChatMessage] = []
+    
     // Стейт для UI
     var projectNodes: [ProjectNode] = []
     var activeToolCalls: [ToolCall] = []
@@ -46,6 +49,15 @@ final class ChatViewModel {
             self.projectNodes = await map.getTreeNodes()
         }
     }
+    
+    func refreshBalance() async {
+        do {
+            let remaining = try await client.fetchCredits()
+            self.remainingBalance = remaining
+        } catch {
+            print("Ошибка загрузки баланса: \(error)")
+        }
+    }
 
     func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?) {
         guard canSend, let model = selectedModelId else { return }
@@ -57,6 +69,10 @@ final class ChatViewModel {
         activeToolCalls = []
         completedToolCalls = []
         pendingApprovals = []
+        
+        // Если есть сохраненный контекст (после продолжения), используем его
+        let contextToSend = sessionContext
+        sessionContext = [] // Очищаем, так как AgentCore его подхватит
         
         messages.append(ChatMessage(role: .user, content: text))
         isRunning = true
@@ -71,13 +87,15 @@ final class ChatViewModel {
                 return await self.requestApproval(reqs)
             }
         )
-        let history = messages
+        
+        // Если контекста нет, передаем историю UI
+        let history = contextToSend.isEmpty ? messages : messages.dropLast()
 
         currentTask = Task {
             var textBuffer = ""
             
             do {
-                let stream = try await core.run(history: history)
+                let stream = try await core.run(history: Array(history), sessionContext: contextToSend)
                 
                 for try await event in stream {
                     if Task.isCancelled { break }
@@ -92,11 +110,6 @@ final class ChatViewModel {
                             textBuffer = ""
                             self.streamingText = ""
                             self.activeToolCalls.append(call)
-                            
-                            // Если это мутирующий инструмент — помечаем файл
-                            if call.function.name == "edit_file" || call.function.name == "write_file" {
-                                // В идеале нужно обновлять ProjectNode, но для простоты перезапросим дерево
-                            }
                         }
                         
                     case .toolResult(let res):
@@ -104,6 +117,12 @@ final class ChatViewModel {
                             self.activeToolCalls.removeAll { $0.id == res.toolCallId }
                             self.completedToolCalls.append(res)
                         }
+                        
+                    case .checkpoint(let msgs):
+                        await MainActor.run {
+                            self.sessionContext = msgs
+                        }
+                        
                     case .usage(let prompt, let completion, _):
                         await MainActor.run {
                             self.totalPromptTokens += prompt
@@ -113,8 +132,6 @@ final class ChatViewModel {
                         break
                     case .failed(let msg):
                         await MainActor.run { self.error = msg }
-                    default:
-                        break
                     }
                 }
                 
@@ -124,8 +141,8 @@ final class ChatViewModel {
                     }
                     self.streamingText = ""
                     self.isRunning = false
-                    Task { await self.refreshBalance() }
                     Task { await self.loadTree(from: projectMap) }
+                    Task { await self.refreshBalance() }
                 }
             } catch {
                 await MainActor.run {
@@ -145,15 +162,6 @@ final class ChatViewModel {
         currentTask = nil
         isRunning = false
         resolveApproval(approved: false)
-    }
-    
-    func refreshBalance() async {
-        do {
-            let remaining = try await client.fetchCredits()
-            self.remainingBalance = remaining
-        } catch {
-            print("Ошибка загрузки баланса: \(error)")
-        }
     }
     
     private func requestApproval(_ reqs: [ApprovalRequest]) async -> Bool {
