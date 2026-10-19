@@ -90,7 +90,10 @@ actor OpenRouterClient {
             tools: tools?.map { AnyCodable($0) }
         )
         let data = try JSONEncoder().encode(payload)
-
+        // ВРЕМЕННЫЙ ЛОГ ДЛЯ ОТЛАДКИ
+        let debugMessages = payload.messages.map { "[\($0.role)]: \($0.content ?? "")" }.joined(separator: "\n---\n")
+        print("=== ОТПРАВЛЯЕМ В OPENROUTER ===\n\(debugMessages)\n===============================")
+        
         let request = HTTPRequest(
             url: baseURL.appending(path: "chat/completions"),
             method: "POST",

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import SwiftData
 
 struct ChatView: View {
     @Bindable var vm: ChatViewModel
@@ -8,7 +9,6 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Верхняя панель (Toolbar)
             HStack {
                 Text(env.projectRoot?.lastPathComponent ?? "Проект не выбран")
                     .font(.headline)
@@ -23,14 +23,10 @@ struct ChatView: View {
                         isRefreshing = false
                     }
                 } label: {
-                    if isRefreshing {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    if isRefreshing { ProgressView().controlSize(.small) }
+                    else { Image(systemName: "arrow.clockwise") }
                 }
                 .buttonStyle(.borderless)
-                .help("Обновить карту проекта")
                 
                 Button {
                     selectFolder()
@@ -38,7 +34,6 @@ struct ChatView: View {
                     Image(systemName: "folder")
                 }
                 .buttonStyle(.borderless)
-                .help("Сменить проект")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)

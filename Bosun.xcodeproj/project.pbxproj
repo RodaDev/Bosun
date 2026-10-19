@@ -18,6 +18,7 @@
 		26686EC1BAD0B86F8C446F4B /* ModelInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */; };
 		2D8B3383D4BC62C35CC67190 /* EditFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */; };
 		353BD04D864C4253AC0BD6C9 /* ToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1240CFE5D2E8AC22B4026A05 /* ToolCall.swift */; };
+		397A8C4855D392AF01FED561 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 665A47CDFA7C47E3A4E4EE89 /* SessionListView.swift */; };
 		403C19D6B6ED90F15A2BC174 /* ApprovalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A767DCCA8F69BB3F8396BA /* ApprovalSheet.swift */; };
 		40B3663C6D871EA5C669DBFC /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2658B3862A554B6CC76D3EE3 /* SettingsStore.swift */; };
 		41263F927D21140314EB3F24 /* SearchTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799C2749877212D190E0D37A /* SearchTool.swift */; };
@@ -61,6 +62,7 @@
 		E7F2724F7BD3563F29A4E20D /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A20A21E942620AF5628C31 /* SSEParser.swift */; };
 		ECB1859E0E9CCDB255A60EB6 /* AgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60511E18F9DD125EF3164717 /* AgentTool.swift */; };
 		EE44F59405F6DA87B2512D28 /* ProjectNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A75D33C9071ABE4AF61260C4 /* ProjectNode.swift */; };
+		F5114AAF0733ED7E341E22AF /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FA305BDDF4B226EB0428A0C /* ChatSession.swift */; };
 		FDAE7AD719BBEE33E5B92EA9 /* AgentCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0C28F894584A7990DF9A12 /* AgentCore.swift */; };
 /* End PBXBuildFile section */
 
@@ -95,6 +97,7 @@
 		5BF5270DEE91E9AFDDE58E3F /* ExcludedPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcludedPaths.swift; sourceTree = "<group>"; };
 		5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditFileTool.swift; sourceTree = "<group>"; };
 		60511E18F9DD125EF3164717 /* AgentTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
+		665A47CDFA7C47E3A4E4EE89 /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
 		6F55686036FC63BE15BB5183 /* XcodeBuildRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildRunner.swift; sourceTree = "<group>"; };
 		75B3E02C015759BB3D725F16 /* OpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterClient.swift; sourceTree = "<group>"; };
 		799C2749877212D190E0D37A /* SearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTool.swift; sourceTree = "<group>"; };
@@ -102,6 +105,7 @@
 		7CCAC9BD1307236F5274331B /* URLSessionTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionTransport.swift; sourceTree = "<group>"; };
 		7DD2C520B99852FBE6DF4323 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7F0CD5593B4A97CED0F3C997 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		7FA305BDDF4B226EB0428A0C /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
 		8870DA61B5B57CD4098F89D3 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
 		9085137A0CD009BB383703CE /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
 		925D11398400750FB2B9AB78 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -209,6 +213,14 @@
 			path = Index;
 			sourceTree = "<group>";
 		};
+		7EC2E977272F30AD35851370 /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+				665A47CDFA7C47E3A4E4EE89 /* SessionListView.swift */,
+			);
+			path = Sidebar;
+			sourceTree = "<group>";
+		};
 		8C0D413695B6CB41A5024334 /* Mutating */ = {
 			isa = PBXGroup;
 			children = (
@@ -262,6 +274,7 @@
 				EF426C4D4B09AD62AA1F0308 /* AgentEvent.swift */,
 				7F0CD5593B4A97CED0F3C997 /* AppSettings.swift */,
 				D41D5496C526276CE45BF694 /* ChatMessage.swift */,
+				7FA305BDDF4B226EB0428A0C /* ChatSession.swift */,
 				43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */,
 				A75D33C9071ABE4AF61260C4 /* ProjectNode.swift */,
 				8870DA61B5B57CD4098F89D3 /* Symbol.swift */,
@@ -286,6 +299,7 @@
 				1407374C7EC28B1D2C164D7D /* ModelPicker */,
 				C17EFBAF612F59C3BDFC4497 /* Project */,
 				D00CD9E45F5EB3AE287FC0EF /* Settings */,
+				7EC2E977272F30AD35851370 /* Sidebar */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -500,6 +514,7 @@
 				403C19D6B6ED90F15A2BC174 /* ApprovalSheet.swift in Sources */,
 				8E876C251105C23E0B621A79 /* BosunApp.swift in Sources */,
 				91C4610F5843B6CFCB0972F1 /* ChatMessage.swift in Sources */,
+				F5114AAF0733ED7E341E22AF /* ChatSession.swift in Sources */,
 				7F467ECD27D7A9E9D344F5AF /* ChatView.swift in Sources */,
 				BAB71B0B2C7A3BE1EFE5A1DD /* ChatViewModel.swift in Sources */,
 				C83439B0335A8B8AABA6C70E /* Composer.swift in Sources */,
@@ -527,6 +542,7 @@
 				E7F2724F7BD3563F29A4E20D /* SSEParser.swift in Sources */,
 				AEDC11E39B3E186FC90E31D5 /* Sandbox.swift in Sources */,
 				41263F927D21140314EB3F24 /* SearchTool.swift in Sources */,
+				397A8C4855D392AF01FED561 /* SessionListView.swift in Sources */,
 				40B3663C6D871EA5C669DBFC /* SettingsStore.swift in Sources */,
 				116F4B590E8A04398A57D2F5 /* SettingsView.swift in Sources */,
 				D9791FBAEF6E54121DC78312 /* SettingsViewModel.swift in Sources */,

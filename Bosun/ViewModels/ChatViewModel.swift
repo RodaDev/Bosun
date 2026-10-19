@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftData
 
 @MainActor
 @Observable
@@ -11,15 +12,13 @@ final class ChatViewModel {
     var error: String?
     var selectedModelId: String?
     
-    // Контекст сессии для восстановления
+    var activeSession: ChatSession?
     var sessionContext: [ChatMessage] = []
     
-    // Стейт для UI
     var projectNodes: [ProjectNode] = []
     var activeToolCalls: [ToolCall] = []
     var completedToolCalls: [ToolResult] = []
     
-    // Статистика токенов
     var totalPromptTokens: Int = 0
     var totalCompletionTokens: Int = 0
     var remainingBalance: Double? = nil
@@ -41,7 +40,7 @@ final class ChatViewModel {
     }
 
     var canSend: Bool {
-        !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil
+        !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil && activeSession != nil
     }
 
     func loadTree(from map: ProjectMap?) async {
@@ -54,13 +53,21 @@ final class ChatViewModel {
         do {
             let remaining = try await client.fetchCredits()
             self.remainingBalance = remaining
-        } catch {
-            print("Ошибка загрузки баланса: \(error)")
-        }
+        } catch {}
     }
 
-    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?) {
-        guard canSend, let model = selectedModelId else { return }
+    func loadSession(_ session: ChatSession) {
+        self.activeSession = session
+        self.messages = session.messages.sorted(by: { $0.timestamp < $1.timestamp }).map { $0.toChatMessage() }
+        self.sessionContext = []
+        self.error = nil
+        self.streamingText = ""
+        self.activeToolCalls = []
+        self.completedToolCalls = []
+    }
+
+    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, context: ModelContext) {
+        guard canSend, let model = selectedModelId, let session = activeSession else { return }
         
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         draft = ""
@@ -70,11 +77,19 @@ final class ChatViewModel {
         completedToolCalls = []
         pendingApprovals = []
         
-        // Если есть сохраненный контекст (после продолжения), используем его
-        let contextToSend = sessionContext
-        sessionContext = [] // Очищаем, так как AgentCore его подхватит
+        let userMsg = ChatMessage(role: .user, content: text)
+        messages.append(userMsg)
         
-        messages.append(ChatMessage(role: .user, content: text))
+        // Сохраняем в БД
+        let storedUser = StoredMessage(from: userMsg)
+        storedUser.session = session
+        context.insert(storedUser)
+        
+        if session.title == "Новый чат" {
+            session.title = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
+        }
+        session.lastModified = Date()
+        
         isRunning = true
 
         let core = AgentCore(
@@ -88,14 +103,16 @@ final class ChatViewModel {
             }
         )
         
-        // Если контекста нет, передаем историю UI
-        let history = contextToSend.isEmpty ? messages : messages.dropLast()
+        let contextToSend = sessionContext
+        sessionContext = []
+        let history = contextToSend.isEmpty ? messages.dropLast() : messages.dropLast()
 
         currentTask = Task {
             var textBuffer = ""
+            let historyToSend = await MainActor.run { self.messages }
             
             do {
-                let stream = try await core.run(history: Array(history), sessionContext: contextToSend)
+                let stream = try await core.run(history: historyToSend, sessionContext: [])
                 
                 for try await event in stream {
                     if Task.isCancelled { break }
@@ -106,7 +123,13 @@ final class ChatViewModel {
                         
                     case .toolCallStarted(let call):
                         await MainActor.run {
-                            self.messages.append(ChatMessage(role: .assistant, content: textBuffer, toolCalls: [call]))
+                            let msg = ChatMessage(role: .assistant, content: textBuffer, toolCalls: [call])
+                            self.messages.append(msg)
+                            
+                            let stored = StoredMessage(from: msg)
+                            stored.session = session
+                            context.insert(stored)
+                            
                             textBuffer = ""
                             self.streamingText = ""
                             self.activeToolCalls.append(call)
@@ -119,17 +142,14 @@ final class ChatViewModel {
                         }
                         
                     case .checkpoint(let msgs):
-                        await MainActor.run {
-                            self.sessionContext = msgs
-                        }
+                        await MainActor.run { self.sessionContext = msgs }
                         
                     case .usage(let prompt, let completion, _):
                         await MainActor.run {
                             self.totalPromptTokens += prompt
                             self.totalCompletionTokens += completion
                         }
-                    case .done:
-                        break
+                    case .done: break
                     case .failed(let msg):
                         await MainActor.run { self.error = msg }
                     }
@@ -137,17 +157,26 @@ final class ChatViewModel {
                 
                 await MainActor.run {
                     if !textBuffer.isEmpty {
-                        self.messages.append(ChatMessage(role: .assistant, content: textBuffer))
+                        let msg = ChatMessage(role: .assistant, content: textBuffer)
+                        self.messages.append(msg)
+                        let stored = StoredMessage(from: msg)
+                        stored.session = session
+                        context.insert(stored)
                     }
                     self.streamingText = ""
                     self.isRunning = false
+                    session.lastModified = Date()
                     Task { await self.loadTree(from: projectMap) }
                     Task { await self.refreshBalance() }
                 }
             } catch {
                 await MainActor.run {
                     if !textBuffer.isEmpty {
-                        self.messages.append(ChatMessage(role: .assistant, content: textBuffer))
+                        let msg = ChatMessage(role: .assistant, content: textBuffer)
+                        self.messages.append(msg)
+                        let stored = StoredMessage(from: msg)
+                        stored.session = session
+                        context.insert(stored)
                     }
                     self.error = error.localizedDescription
                     self.streamingText = ""

@@ -64,3 +64,6 @@ schemes:
       targets: [BosunTests]
     archive:
       config: Release
+      
+dependencies:
+      - sdk: SwiftData.framework

@@ -32,8 +32,10 @@ actor AgentCore {
                 
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
+                print("=== АГЕНТ ПОЛУЧИЛ ИСТОРИЮ: \(history.count) сообщений ===")
+                for msg in history { print("[\(msg.role.rawValue)]: \(msg.content.prefix(50))") }
                 
-                var currentContext = sessionContext
+                let currentContext = sessionContext
                 var currentTokens = 0 // Примерный счетчик
                 
                 if !currentContext.isEmpty {

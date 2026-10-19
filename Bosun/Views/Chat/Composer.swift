@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct Composer: View {
     @Bindable var vm: ChatViewModel
     var env: AppEnvironment
+    @Environment(\.modelContext) private var context
     @State private var showPicker = false
 
     var body: some View {
@@ -26,7 +28,7 @@ struct Composer: View {
                 TextField("Сообщение агенту…", text: $vm.draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
-                    .onSubmit { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap) }
+                    .onSubmit { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, context: context) }
                 
                 if vm.isRunning && vm.streamingText.isEmpty {
                     ProgressView()
@@ -35,7 +37,7 @@ struct Composer: View {
                 }
                 
                 Button {
-                    vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap)
+                    vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, context: context)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.title2)
                 }
