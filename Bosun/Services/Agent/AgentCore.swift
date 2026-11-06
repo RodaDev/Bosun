@@ -7,7 +7,6 @@ actor AgentCore {
     private let projectMap: ProjectMap?
     private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool
     
-    // Порог токенов, после которого запускается сжатие
     private let contextLimit = 15000
     
     init(
@@ -32,30 +31,34 @@ actor AgentCore {
                 
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
-                print("=== АГЕНТ ПОЛУЧИЛ ИСТОРИЮ: \(history.count) сообщений ===")
-                for msg in history { print("[\(msg.role.rawValue)]: \(msg.content.prefix(50))") }
                 
-                let currentContext = sessionContext
-                var currentTokens = 0 // Примерный счетчик
-                
-                if !currentContext.isEmpty {
-                    messages.append(contentsOf: currentContext)
-                } else {
-                    let contextToSend = await compressIfNeeded(history: history)
-                    messages.append(contentsOf: contextToSend)
-                }
+                let lastUserMessage = history.last(where: { $0.role == .user })?.content ?? ""
+                let rawContext = sessionContext.isEmpty ? await compressIfNeeded(history: history) : sessionContext
+                let safeContext = sanitizeHistory(rawContext)
+                messages.append(contentsOf: safeContext)
                 
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
+                
+                var consecutiveBuildFailures = 0
                 
                 for step in 0..<25 {
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
                     
+                    var messagesToSend = messages
+                    if step > 0 && !lastUserMessage.isEmpty {
+                        let anchor = ChatMessage(
+                            role: .system, 
+                            content: "КРИТИЧЕСКИ ВАЖНО: Твоя задача — выполнить это: \"\(lastUserMessage)\". Переходи к действиям."
+                        )
+                        messagesToSend.append(anchor)
+                    }
+                    
                     do {
                         let stream = try await client.streamCompletion(
                             model: model, 
-                            messages: messages, 
+                            messages: messagesToSend, 
                             tools: useTools ? tools : nil
                         )
                         
@@ -68,7 +71,6 @@ actor AgentCore {
                                 accumulatedToolCalls.append(contentsOf: tcs)
                             }
                             if let usage = chunk.usage {
-                                currentTokens = usage.promptTokens // Обновляем счетчик
                                 continuation.yield(.usage(prompt: usage.promptTokens, completion: usage.completionTokens, cached: usage.cachedTokens))
                             }
                             if chunk.isDone { break }
@@ -79,28 +81,17 @@ actor AgentCore {
                         return
                     }
                     
-                    // Если токенов слишком много, запускаем сжатие
-                    if currentTokens > contextLimit {
-                        continuation.yield(.textDelta("\n\n*[Система: Контекст достиг лимита, выполняется сжатие истории...]*\n\n"))
-                        
-                        // Берем последние 4 сообщения, остальное сжимаем
-                        let recent = Array(messages.suffix(4))
-                        let toSummarize = Array(messages.dropLast(4).dropFirst()) // без системного промпта
-                        
-                        let summary = await summarize(messages: toSummarize)
-                        let summaryMsg = ChatMessage(role: .system, content: "КРАТКАЯ ИСТОРИЯ ПРЕДЫДУЩИХ ДЕЙСТВИЙ:\n\(summary)")
-                        
-                        // Пересобираем контекст
-                        messages = [messages[0]] + [summaryMsg] + recent
-                        currentTokens = 0 // Сбрасываем счетчик (примерно)
-                        
-                        continuation.yield(.checkpoint(messages))
-                    }
-                    
                     if accumulatedToolCalls.isEmpty {
                         if !accumulatedText.isEmpty {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
+                        
+                        // AUTO-FIX LOOP
+                        if consecutiveBuildFailures > 0 && consecutiveBuildFailures <= 3 {
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Ты должен использовать edit_file, чтобы исправить ошибки. Не сдавайся, проанализируй лог."))
+                            continue
+                        }
+                        
                         continuation.finish()
                         return
                     }
@@ -111,85 +102,88 @@ actor AgentCore {
                     if let runtime = runtime {
                         let requests = await runtime.prepareApprovals(for: accumulatedToolCalls)
                         var approved = true
-                        
-                        if !requests.isEmpty {
-                            approved = await approvalHandler(requests)
-                        }
+                        if !requests.isEmpty { approved = await approvalHandler(requests) }
                         
                         for call in accumulatedToolCalls {
                             continuation.yield(.toolCallStarted(call))
-                            let result: ToolResult
-                            if approved {
-                                result = await runtime.execute(call)
-                            } else {
-                                result = ToolResult.error(call.id, "Пользователь отклонил изменения.")
-                            }
+                            let result = approved ? await runtime.execute(call) : ToolResult.error(call.id, "Отклонено")
+                            continuation.yield(.toolResult(result))
+                            messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
                             
-                            continuation.yield(.toolResult(result))
-                            messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
-                        }
-                    } else {
-                        for call in accumulatedToolCalls {
-                            continuation.yield(.toolCallStarted(call))
-                            let result = ToolResult.error(call.id, "Инструменты недоступны")
-                            continuation.yield(.toolResult(result))
-                            messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
+                            if call.function.name == "run_xcodebuild" || call.function.name == "run_build" {
+                                if result.content.contains("error:") || result.content.contains("BUILD FAILED") || result.isError {
+                                    consecutiveBuildFailures += 1
+                                    messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Проанализируй ошибки выше и исправь их с помощью edit_file."))
+                                } else {
+                                    consecutiveBuildFailures = 0
+                                }
+                            }
                         }
                     }
                     
                     continuation.yield(.checkpoint(messages))
                 }
-                
-                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Достигнут лимит шагов (25)."]))
+                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Достигнут лимит шагов."]))
             }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
     
-    // Настоящее сжатие через дешевую модель
-    private func summarize(messages: [ChatMessage]) async -> String {
-        var textToSummarize = ""
-        for msg in messages {
-            if msg.role == .user {
-                textToSummarize += "Пользователь: \(msg.content)\n"
-            } else if msg.role == .assistant, !msg.content.isEmpty {
-                textToSummarize += "Ассистент: \(msg.content)\n"
+    private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
+        var sanitized: [ChatMessage] = []
+        var pendingToolCallIds: Set<String> = []
+        
+        for msg in history {
+            if msg.role == .assistant, let calls = msg.toolCalls {
+                sanitized.append(msg)
+                for call in calls { pendingToolCallIds.insert(call.id) }
             } else if msg.role == .tool {
-                textToSummarize += "Результат инструмента: \(msg.content.prefix(200))...\n"
+                if let callId = msg.toolCallId, pendingToolCallIds.contains(callId) {
+                    sanitized.append(msg)
+                    pendingToolCallIds.remove(callId)
+                }
+            } else {
+                sanitized.append(msg)
             }
         }
         
-        let summaryRequest = ChatCompletionRequest(
-            model: "openai/gpt-4o-mini", // Используем дешевую и быструю модель для сжатия
-            messages: [
-                ChatMessage(role: .system, content: PromptBuilder.buildSummaryPrompt()).wire,
-                ChatMessage(role: .user, content: textToSummarize).wire
-            ],
-            stream: false,
-            tools: nil
-        )
-        
-        do {
-            // Мы используем тот же клиент, но не стриминговый метод
-            // В идеале нужно добавить метод non-streaming completion в OpenRouterClient
-            // Пока для простоты используем стриминговый и собираем текст
-            let stream = try await client.streamCompletion(model: "openai/gpt-4o-mini", messages: summaryRequest.messages.map { ChatMessage(role: ChatRole(rawValue: $0.role) ?? .user, content: $0.content ?? "") }, tools: nil)
-            var summary = ""
-            for try await chunk in stream {
-                summary += chunk.textDelta
+        if !pendingToolCallIds.isEmpty {
+            sanitized = sanitized.filter { msg in
+                if msg.role == .assistant, let calls = msg.toolCalls {
+                    let hasMissing = calls.contains { pendingToolCallIds.contains($0.id) }
+                    return !hasMissing
+                }
+                return true
             }
-            return summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return sanitized
+    }
+    
+    private func summarize(messages: [ChatMessage], task: String) async -> String {
+        var textToSummarize = ""
+        for msg in messages {
+            if msg.role == .user { textToSummarize += "Пользователь: \(msg.content)\n" }
+            else if msg.role == .assistant, !msg.content.isEmpty { textToSummarize += "Ассистент: \(msg.content)\n" }
+            else if msg.role == .tool { textToSummarize += "Результат инструмента: \(msg.content.prefix(100))...\n" }
+        }
+        let prompt = "Ты — система сжатия контекста. ГЛАВНАЯ ЗАДАЧА: \(task)\nНапиши краткое резюме (до 5 предложений)."
+        do {
+            let stream = try await client.streamCompletion(model: "openai/gpt-4o-mini", messages: [
+                ChatMessage(role: .system, content: prompt),
+                ChatMessage(role: .user, content: textToSummarize)
+            ], tools: nil)
+            var summary = ""
+            for try await chunk in stream { summary += chunk.textDelta }
+            return "КРАТКАЯ ИСТОРИЯ:\n\(summary)"
         } catch {
-            return "Не удалось сжать контекст из-за ошибки сети."
+            return "КРАТКАЯ ИСТОРИЯ: Не удалось сжать. Выполняй задачу: \(task)"
         }
     }
     
     private func compressIfNeeded(history: [ChatMessage]) async -> [ChatMessage] {
         if history.count <= 15 { return history }
-        // Простая обрезка для первичной отправки
         let toSummarize = Array(history.prefix(history.count - 5))
         let recent = Array(history.suffix(5))
-        
         var summaryText = "Краткая сводка предыдущих действий:\n"
         for msg in toSummarize {
             if msg.role == .user { summaryText += "- Пользователь: \(msg.content.prefix(100))\n" }

@@ -27,7 +27,20 @@ struct ChatView: View {
                     else { Image(systemName: "arrow.clockwise") }
                 }
                 .buttonStyle(.borderless)
-                
+                Button {
+                    Task {
+                        if let git = env.gitService {
+                            try? await git.undoAllChanges()
+                            // Перезагружаем дерево проекта после отката
+                            _ = await env.projectMap?.refreshTree()
+                            await vm.loadTree(from: env.projectMap)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+                .help("Откатить все изменения (Git Undo)")
                 Button {
                     selectFolder()
                 } label: {

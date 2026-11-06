@@ -15,6 +15,7 @@ final class AppEnvironment {
     var symbolIndex: SymbolIndex?
     var projectMap: ProjectMap?
     var toolRuntime: ToolRuntime?
+    var gitService: GitService?
     
     var projectRoot: URL? {
         didSet {
@@ -23,10 +24,12 @@ final class AppEnvironment {
                 let idx = SymbolIndex(rootURL: root)
                 let map = ProjectMap(rootURL: root)
                 let runner = XcodeBuildRunner(rootURL: root)
+                let git = GitService(rootURL: root)
                 
                 self.sandbox = box
                 self.symbolIndex = idx
                 self.projectMap = map
+                self.gitService = git
                 
                 let tools: [AgentTool] = [
                     ListDirTool(sandbox: box),
@@ -36,7 +39,9 @@ final class AppEnvironment {
                     ListSymbolsTool(sandbox: box, index: idx),
                     WriteFileTool(sandbox: box),
                     EditFileTool(sandbox: box),
-                    RunXcodebuildTool(runner: runner)
+                    RunXcodebuildTool(runner: runner),
+                    GitStatusTool(gitService: git),
+                    GitDiffTool(gitService: git)
                 ]
                 self.toolRuntime = ToolRuntime(registry: ToolRegistry(tools: tools))
                 settings.projectRootPath = root.path
@@ -47,6 +52,7 @@ final class AppEnvironment {
                 symbolIndex = nil
                 projectMap = nil
                 toolRuntime = nil
+                gitService = nil
                 settings.projectRootPath = nil
             }
         }

@@ -14,6 +14,7 @@
 		13D6D95E60EF9F242FC3CA96 /* ModelPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FB2E3EC272904BFD06EC17 /* ModelPickerSheet.swift */; };
 		1AAF414316CE86677B5BB862 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD2C520B99852FBE6DF4323 /* OnboardingView.swift */; };
 		1BE6216C255F32DE7902AD51 /* FindSymbolTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5348339AB18AF18F7443B6D1 /* FindSymbolTool.swift */; };
+		1FDCA4965BAECB8BE548E3DD /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B1D05A9054A8C943B1CC03 /* GitService.swift */; };
 		21D0B2E7F64AE9CD9C0F2F1F /* AgentEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF426C4D4B09AD62AA1F0308 /* AgentEvent.swift */; };
 		26686EC1BAD0B86F8C446F4B /* ModelInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */; };
 		2D8B3383D4BC62C35CC67190 /* EditFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */; };
@@ -86,6 +87,7 @@
 		2BD095FD3A23E0794093A349 /* Sandbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sandbox.swift; sourceTree = "<group>"; };
 		2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunXcodebuildTool.swift; sourceTree = "<group>"; };
 		31CD4B03769456C76588F099 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		33B1D05A9054A8C943B1CC03 /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		41A767DCCA8F69BB3F8396BA /* ApprovalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalSheet.swift; sourceTree = "<group>"; };
 		43A43B8053891C6F3045F8ED /* ListSymbolsTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListSymbolsTool.swift; sourceTree = "<group>"; };
 		43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelInfo.swift; sourceTree = "<group>"; };
@@ -201,6 +203,14 @@
 				309235D2EAD3FB95393AD8F9 /* Configs */,
 				FCFD861BCB58B041DF682996 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		5DD33409BDAC5B37A3C48170 /* Git */ = {
+			isa = PBXGroup;
+			children = (
+				33B1D05A9054A8C943B1CC03 /* GitService.swift */,
+			);
+			path = Git;
 			sourceTree = "<group>";
 		};
 		78C3B0133C9C2DD858EEC76E /* Index */ = {
@@ -346,6 +356,7 @@
 			children = (
 				226262AE35EDFBD59548F426 /* Agent */,
 				8C2851C932CABF17EF1B6CEF /* Build */,
+				5DD33409BDAC5B37A3C48170 /* Git */,
 				78C3B0133C9C2DD858EEC76E /* Index */,
 				A814F52E1FBE7A6514ED4D10 /* Networking */,
 				D1400DFCF4FA097876D94ADC /* Sandbox */,
@@ -522,6 +533,7 @@
 				2D8B3383D4BC62C35CC67190 /* EditFileTool.swift in Sources */,
 				9D7B465D2F3FFC0CB27BD2A2 /* ExcludedPaths.swift in Sources */,
 				1BE6216C255F32DE7902AD51 /* FindSymbolTool.swift in Sources */,
+				1FDCA4965BAECB8BE548E3DD /* GitService.swift in Sources */,
 				50866AFF155203CCA749898B /* KeychainStore.swift in Sources */,
 				A71D647998EE83E1E3B84BB2 /* ListDirTool.swift in Sources */,
 				CE35A970AD8C51A789AB5877 /* ListSymbolsTool.swift in Sources */,
@@ -575,10 +587,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = P4MDXR8V44;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -586,7 +595,6 @@
 					"@loader_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.bosun.app.tests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bosun.app/Contents/MacOS/Bosun";
 			};
@@ -750,10 +758,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = P4MDXR8V44;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -761,7 +766,6 @@
 					"@loader_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.bosun.app.tests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bosun.app/Contents/MacOS/Bosun";
 			};
