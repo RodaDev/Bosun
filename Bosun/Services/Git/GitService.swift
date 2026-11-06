@@ -23,7 +23,7 @@ actor GitService {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             return String(data: data, encoding: .utf8) ?? ""
         } catch {
-            return "Ошибка запуска git: \(error.localizedDescription)"
+            return ""
         }
     }
     
@@ -40,8 +40,20 @@ actor GitService {
     func getDiff() async -> String {
         return await runGit(["diff"])
     }
+    
+    /// Возвращает список измененных или новых файлов (без коммита)
+    func getChangedFiles() async -> [String] {
+        let output = await runGit(["status", "--porcelain"])
+        return output.components(separatedBy: .newlines)
+            .compactMap { line -> String? in
+                guard line.count > 3 else { return nil }
+                // Формат: " M path" или "?? path". Берем всё после первых 3 символов
+                return String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+            }
+    }
 }
 
+// Инструменты
 struct GitStatusTool: AgentTool {
     let gitService: GitService
     var definition: ToolDefinition {

@@ -77,6 +77,40 @@ actor OpenRouterClient {
             throw OpenRouterError.decoding("\(error)")
         }
     }
+    
+    func fetchEmbedding(text: String) async throws -> [Float] {
+        let payload: [String: Any] = [
+            "model": "openai/text-embedding-3-small",
+            "input": text
+        ]
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        
+        let request = HTTPRequest(
+            url: baseURL.appending(path: "embeddings"),
+            method: "POST",
+            headers: [
+                "Authorization": "Bearer \(try apiKey())",
+                "Content-Type": "application/json"
+            ],
+            body: data
+        )
+        let response = try await transport.send(request)
+        let responseData = try await collect(response.body)
+        
+        guard response.statusCode == 200 else {
+            throw OpenRouterError.server(status: response.statusCode, body: String(data: responseData, encoding: .utf8) ?? "")
+        }
+        
+        struct EmbeddingResponse: Decodable {
+            struct Data: Decodable {
+                let embedding: [Float]
+            }
+            let data: [Data]
+        }
+        
+        let decoded = try JSONDecoder().decode(EmbeddingResponse.self, from: responseData)
+        return decoded.data.first?.embedding ?? []
+    }
 
     func streamCompletion(
         model: String,
