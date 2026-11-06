@@ -41,6 +41,8 @@ actor AgentCore {
                 let useTools = !tools.isEmpty
                 
                 var consecutiveBuildFailures = 0
+                var lastToolCallHash: Int = 0
+                var duplicateCallCount = 0
                 
                 for step in 0..<25 {
                     var accumulatedText = ""
@@ -49,7 +51,7 @@ actor AgentCore {
                     var messagesToSend = messages
                     if step > 0 && !lastUserMessage.isEmpty {
                         let anchor = ChatMessage(
-                            role: .system, 
+                            role: .system,
                             content: "КРИТИЧЕСКИ ВАЖНО: Твоя задача — выполнить это: \"\(lastUserMessage)\". Переходи к действиям."
                         )
                         messagesToSend.append(anchor)
@@ -57,8 +59,8 @@ actor AgentCore {
                     
                     do {
                         let stream = try await client.streamCompletion(
-                            model: model, 
-                            messages: messagesToSend, 
+                            model: model,
+                            messages: messagesToSend,
                             tools: useTools ? tools : nil
                         )
                         
@@ -81,14 +83,29 @@ actor AgentCore {
                         return
                     }
                     
+                    // ЗАЩИТА ОТ ЗАЦИКЛИВАНИЯ
+                    if let firstCall = accumulatedToolCalls.first {
+                        let callHash = (firstCall.function.name + firstCall.function.arguments).hashValue
+                        if callHash == lastToolCallHash {
+                            duplicateCallCount += 1
+                            if duplicateCallCount >= 2 {
+                                continuation.yield(.textDelta("\n\n*[Система: Обнаружено зацикливание на одном и том же действии. Остановка.]*"))
+                                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Зацикливание на вызове инструмента."]))
+                                return
+                            }
+                        } else {
+                            lastToolCallHash = callHash
+                            duplicateCallCount = 0
+                        }
+                    }
+                    
                     if accumulatedToolCalls.isEmpty {
                         if !accumulatedText.isEmpty {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
                         
-                        // AUTO-FIX LOOP
                         if consecutiveBuildFailures > 0 && consecutiveBuildFailures <= 3 {
-                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Ты должен использовать edit_file, чтобы исправить ошибки. Не сдавайся, проанализируй лог."))
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Ты должен использовать edit_file или write_file, чтобы исправить ошибки."))
                             continue
                         }
                         
@@ -113,7 +130,7 @@ actor AgentCore {
                             if call.function.name == "run_xcodebuild" || call.function.name == "run_build" {
                                 if result.content.contains("error:") || result.content.contains("BUILD FAILED") || result.isError {
                                     consecutiveBuildFailures += 1
-                                    messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Проанализируй ошибки выше и исправь их с помощью edit_file."))
+                                    messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Проанализируй ошибки выше и исправь их."))
                                 } else {
                                     consecutiveBuildFailures = 0
                                 }
@@ -128,6 +145,8 @@ actor AgentCore {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+    
+    // MARK: - Helpers
     
     private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var sanitized: [ChatMessage] = []
@@ -166,7 +185,9 @@ actor AgentCore {
             else if msg.role == .assistant, !msg.content.isEmpty { textToSummarize += "Ассистент: \(msg.content)\n" }
             else if msg.role == .tool { textToSummarize += "Результат инструмента: \(msg.content.prefix(100))...\n" }
         }
+        
         let prompt = "Ты — система сжатия контекста. ГЛАВНАЯ ЗАДАЧА: \(task)\nНапиши краткое резюме (до 5 предложений)."
+        
         do {
             let stream = try await client.streamCompletion(model: "openai/gpt-4o-mini", messages: [
                 ChatMessage(role: .system, content: prompt),

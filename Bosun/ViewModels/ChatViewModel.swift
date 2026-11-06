@@ -89,7 +89,7 @@ final class ChatViewModel {
             session.title = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
         }
         session.lastModified = Date()
-        
+        try? context.save()
         isRunning = true
 
         let core = AgentCore(
@@ -129,7 +129,7 @@ final class ChatViewModel {
                             let stored = StoredMessage(from: msg)
                             stored.session = session
                             context.insert(stored)
-                            
+                            try? context.save()
                             textBuffer = ""
                             self.streamingText = ""
                             self.activeToolCalls.append(call)
@@ -162,6 +162,7 @@ final class ChatViewModel {
                         let stored = StoredMessage(from: msg)
                         stored.session = session
                         context.insert(stored)
+                        try? context.save()
                     }
                     self.streamingText = ""
                     self.isRunning = false
@@ -177,6 +178,7 @@ final class ChatViewModel {
                         let stored = StoredMessage(from: msg)
                         stored.session = session
                         context.insert(stored)
+                        try? context.save()
                     }
                     self.error = error.localizedDescription
                     self.streamingText = ""

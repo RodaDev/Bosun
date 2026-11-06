@@ -8,11 +8,11 @@ struct EditFileTool: AgentTool {
     var definition: ToolDefinition {
         ToolDefinition(
             name: "edit_file",
-            description: "Заменяет конкретный фрагмент текста в файле. 'old_string' должен точно совпадать с текстом в файле.",
+            description: "Заменяет фрагмент текста. Для удаления структуры передай только её заголовок (например 'struct MyView {') и пустой new_string. Если строка встречается несколько раз, система сама добавит контекст.",
             parameters: [
                 "path": ToolParameter(description: "Путь к файлу"),
-                "old_string": ToolParameter(description: "Точный текст, который нужно найти и заменить"),
-                "new_string": ToolParameter(description: "Новый текст, на который нужно заменить")
+                "old_string": ToolParameter(description: "Текст для поиска"),
+                "new_string": ToolParameter(description: "Текст для замены (пустой для удаления)")
             ]
         )
     }
@@ -30,71 +30,108 @@ struct EditFileTool: AgentTool {
     
     func execute(arguments: String) async throws -> String {
         let args = try decodeArgs(Args.self, from: arguments)
+        
+        var finalNewString = args.new_string
+        if args.old_string == args.new_string {
+            finalNewString = ""
+        }
+        
         let url = try await sandbox.resolve(args.path)
         try await sandbox.validateExists(url)
         
-        var content = try String(contentsOf: url, encoding: .utf8)
-        let originalContent = content
+        let originalContent = try String(contentsOf: url, encoding: .utf8)
+        var content = originalContent
         
-        var occurrences = content.components(separatedBy: args.old_string).count - 1
+        var targetOldString = args.old_string
         
-        // Фолбэк 1: Игнорируем пробелы
-        if occurrences == 0 {
-            let strippedOld = args.old_string.components(separatedBy: .whitespacesAndNewlines).joined()
+        // 1. УМНОЕ УДАЛЕНИЕ (если old_string заканчивается на "{")
+        if finalNewString.isEmpty && targetOldString.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("{") {
             let lines = content.components(separatedBy: .newlines)
-            let oldLines = args.old_string.components(separatedBy: .newlines)
-            
-            for i in 0...(lines.count - oldLines.count) {
-                let slice = lines[i..<(i + oldLines.count)].joined()
-                let strippedSlice = slice.components(separatedBy: .whitespacesAndNewlines).joined()
-                
-                if strippedSlice == strippedOld {
-                    let newContent = Array(lines[..<i]) + [args.new_string] + Array(lines[(i + oldLines.count)...])
-                    content = newContent.joined(separator: "\n")
-                    occurrences = 1
-                    break
+            var startIndex = -1
+            for i in 0..<lines.count {
+                if lines[i].contains(targetOldString) { startIndex = i; break }
+            }
+            if startIndex != -1 {
+                var braceCount = 0
+                var foundOpening = false
+                var endIndex = startIndex
+                for i in startIndex..<lines.count {
+                    for char in lines[i] {
+                        if char == "{" { braceCount += 1; foundOpening = true }
+                        else if char == "}" { braceCount -= 1 }
+                    }
+                    if foundOpening && braceCount == 0 { endIndex = i; break }
+                }
+                if endIndex > startIndex {
+                    targetOldString = lines[startIndex...endIndex].joined(separator: "\n")
                 }
             }
         }
         
-        // Фолбэк 2: Если не нашли, подсказываем ближайший блок
-        if occurrences == 0 {
+        var occurrences = content.components(separatedBy: targetOldString).count - 1
+        
+        // 2. АВТО-КОНТЕКСТ (если встречается несколько раз)
+        if occurrences > 1 {
             let lines = content.components(separatedBy: .newlines)
-            let oldLines = args.old_string.components(separatedBy: .newlines)
+            let oldLines = targetOldString.components(separatedBy: .newlines)
             
-            var bestMatchIndex = 0
-            var bestMatchScore = 0.0
+            // Ищем уникальный контекст, добавляя строки сверху
+            for i in 0...(lines.count - oldLines.count) {
+                let slice = lines[i..<(i + oldLines.count)].joined(separator: "\n")
+                if slice == targetOldString {
+                    if i > 0 {
+                        let expandedString = lines[(i-1)...(i + oldLines.count - 1)].joined(separator: "\n")
+                        if content.components(separatedBy: expandedString).count - 1 == 1 {
+                            targetOldString = expandedString
+                            if !finalNewString.isEmpty {
+                                finalNewString = lines[i-1] + "\n" + finalNewString
+                            }
+                            occurrences = 1
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 3. ФОЛБЭК С ПРОБЕЛАМИ (если не нашли)
+        if occurrences == 0 {
+            let strippedOld = targetOldString.components(separatedBy: .whitespacesAndNewlines).joined()
+            let lines = content.components(separatedBy: .newlines)
+            let oldLines = targetOldString.components(separatedBy: .newlines)
             
             if lines.count >= oldLines.count {
                 for i in 0...(lines.count - oldLines.count) {
-                    let slice = lines[i..<(i + oldLines.count)]
-                    var matches = 0
-                    for (l1, l2) in zip(slice, oldLines) {
-                        if l1.trimmingCharacters(in: .whitespaces) == l2.trimmingCharacters(in: .whitespaces) {
-                            matches += 1
-                        }
-                    }
-                    let score = Double(matches) / Double(oldLines.count)
-                    if score > bestMatchScore {
-                        bestMatchScore = score
-                        bestMatchIndex = i
+                    let slice = lines[i..<(i + oldLines.count)].joined()
+                    let strippedSlice = slice.components(separatedBy: .whitespacesAndNewlines).joined()
+                    if strippedSlice == strippedOld {
+                        let newContent = Array(lines[..<i]) + [finalNewString] + Array(lines[(i + oldLines.count)...])
+                        content = newContent.joined(separator: "\n")
+                        occurrences = 1
+                        break
                     }
                 }
             }
-            
-            if bestMatchScore > 0.5 {
-                let slice = lines[bestMatchIndex..<(bestMatchIndex + oldLines.count)].joined(separator: "\n")
-                throw NSError(domain: "EditFile", code: 0, userInfo: [NSLocalizedDescriptionKey: "Строка old_string не найдена. Возможно, ты имел в виду этот блок (строки \(bestMatchIndex+1)-\(bestMatchIndex+oldLines.count)):\n---\n\(slice)\n---\nПожалуйста, скопируй этот текст ТОЧНО в old_string и попробуй снова."])
-            }
-            
-            throw NSError(domain: "EditFile", code: 0, userInfo: [NSLocalizedDescriptionKey: "Строка old_string не найдена в файле. Попробуй использовать write_file для полной перезаписи файла."])
+        } else if occurrences == 1 {
+            content = content.replacingOccurrences(of: targetOldString, with: finalNewString)
         }
         
+        if occurrences == 0 {
+            throw NSError(domain: "EditFile", code: 0, userInfo: [NSLocalizedDescriptionKey: "Строка old_string не найдена. Прочитай файл заново."])
+        }
         if occurrences > 1 {
-            throw NSError(domain: "EditFile", code: 0, userInfo: [NSLocalizedDescriptionKey: "Строка old_string встречается \(occurrences) раз. Нужен более уникальный фрагмент."])
+            throw NSError(domain: "EditFile", code: 0, userInfo: [NSLocalizedDescriptionKey: "Строка встречается \(occurrences) раз. Добавь 2-3 строки контекста вокруг."])
+        }
+        
+        if finalNewString.isEmpty {
+            content = content.replacingOccurrences(of: "\n\n\n", with: "\n\n")
         }
         
         try content.write(to: url, atomically: true, encoding: .utf8)
+        
+        if finalNewString.isEmpty {
+            return "Код успешно удален."
+        }
         return "Файл \(args.path) успешно изменен."
     }
 }

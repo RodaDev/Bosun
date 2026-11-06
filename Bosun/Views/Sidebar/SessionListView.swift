@@ -45,6 +45,7 @@ struct SessionListView: View {
                 Button {
                     let newSession = ChatSession()
                     context.insert(newSession)
+                    try? context.save()
                     env.chatVM.loadSession(newSession)
                 } label: {
                     Image(systemName: "square.and.pencil")

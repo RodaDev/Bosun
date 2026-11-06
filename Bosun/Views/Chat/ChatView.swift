@@ -37,13 +37,21 @@ struct ChatView: View {
                                 }
                             }
                         }
-                        if !vm.streamingText.isEmpty { MessageBubble(message: ChatMessage(role: .assistant, content: vm.streamingText)).id("stream") }
+                        if !vm.streamingText.isEmpty { 
+                            MessageBubble(message: ChatMessage(role: .assistant, content: vm.streamingText))
+                                .id("stream") 
+                        }
                         if let err = vm.error { Text(err).foregroundStyle(.red).font(.callout) }
                     }
                     .padding(16)
                 }
-                .onChange(of: vm.messages.count) { _, _ in if let last = vm.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } } }
-                .onChange(of: vm.streamingText) { _, _ in proxy.scrollTo("stream", anchor: .bottom) }
+                // ФИКС: Убираем onChange для streamingText, чтобы не было ошибки multiple updates
+                // Вместо этого используем .onChange только для количества сообщений
+                .onChange(of: vm.messages.count) { _, _ in 
+                    if let last = vm.messages.last { 
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } 
+                    } 
+                }
             }
             
             Divider()
@@ -54,7 +62,6 @@ struct ChatView: View {
             env.modelContext = context
             if env.projectRoot != nil { 
                 env.projectRoot = env.projectRoot 
-                // АВТО-ИНДЕКСАЦИЯ (Только если не идет процесс)
                 Task {
                     env.checkIfIndexed(context: context)
                     if !env.indexState.isReady && !env.indexState.isIndexing {
