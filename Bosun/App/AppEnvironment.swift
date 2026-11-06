@@ -35,10 +35,17 @@ final class AppEnvironment {
                 self.indexerService = IndexerService(sandbox: box, client: openRouter, gitService: git)
                 
                 var tools: [AgentTool] = [
-                    ListDirTool(sandbox: box), ReadFileTool(sandbox: box), SearchTool(sandbox: box),
-                    FindSymbolTool(index: idx), ListSymbolsTool(sandbox: box, index: idx),
-                    WriteFileTool(sandbox: box), EditFileTool(sandbox: box),
-                    RunXcodebuildTool(runner: runner), GitStatusTool(gitService: git), GitDiffTool(gitService: git)
+                    ListDirTool(sandbox: box), 
+                    ReadFileTool(sandbox: box, index: idx), // <-- Обновлено
+                    ReadSymbolTool(sandbox: box, index: idx), // <-- Новое
+                    SearchTool(sandbox: box),
+                    FindSymbolTool(index: idx), 
+                    ListSymbolsTool(sandbox: box, index: idx),
+                    WriteFileTool(sandbox: box), 
+                    EditFileTool(sandbox: box),
+                    RunXcodebuildTool(runner: runner), 
+                    GitStatusTool(gitService: git), 
+                    GitDiffTool(gitService: git)
                 ]
                 if let ctx = modelContext {
                     tools.append(SemanticSearchTool(client: openRouter, context: ctx))

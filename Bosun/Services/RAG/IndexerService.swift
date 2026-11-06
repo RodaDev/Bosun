@@ -25,7 +25,7 @@ actor IndexerService {
     }
     
     func indexProject(context: ModelContext, progress: @escaping @Sendable (String) -> Void) async throws {
-        let root = await sandbox.rootURL
+        let root = sandbox.rootURL
         
         // 1. Получаем список измененных файлов (через Git, либо через сканирование)
         var filesToIndex: [URL] = []

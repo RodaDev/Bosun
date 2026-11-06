@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 
+import SwiftUI
+import SwiftData
+
 struct ProjectTreeView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var context
@@ -42,7 +45,7 @@ struct ProjectTreeView: View {
                     Text("Обновлено: \(date.formatted(date: .abbreviated, time: .shortened))")
                         .font(.caption2).foregroundStyle(.secondary)
                     Button("Обновить индекс") {
-                        Task { await env.startIndexing() }
+                        Task { await env.startIndexing(context: context) } // <-- Передаем context
                     }
                     .buttonStyle(.link)
                     .font(.caption)
@@ -54,7 +57,7 @@ struct ProjectTreeView: View {
                     }
                     Text(msg).font(.caption2).foregroundStyle(.red).lineLimit(2)
                     Button("Повторить") {
-                        Task { await env.startIndexing() }
+                        Task { await env.startIndexing(context: context) } // <-- Передаем context
                     }
                     .buttonStyle(.link)
                     .font(.caption)
@@ -65,7 +68,7 @@ struct ProjectTreeView: View {
                         Text("Не проиндексирован").font(.caption).bold()
                     }
                     Button("Проиндексировать код") {
-                        Task { await env.startIndexing() }
+                        Task { await env.startIndexing(context: context) } // <-- Передаем context
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -97,10 +100,15 @@ struct ProjectTreeView: View {
             .background(Color.black.opacity(0.1))
         }
         .onAppear {
-            Task { 
+            Task {
                 await env.chatVM.loadTree(from: env.projectMap)
                 await env.chatVM.refreshBalance()
-                env.checkIfIndexed()
+                env.checkIfIndexed(context: context)
+                
+                // АВТО-ЗАПУСК, если база пуста
+                if case .notIndexed = env.indexState.status {
+                    await env.startIndexing(context: context)
+                }
             }
         }
     }
