@@ -11,12 +11,19 @@ final class ChatSession {
     @Relationship(deleteRule: .cascade, inverse: \StoredMessage.session)
     var messages: [StoredMessage]
     
-    init(title: String = "Новый чат") {
+    init(title: String = "Новый диалог") {
         self.id = UUID()
         self.title = title
         self.createdAt = Date()
         self.lastModified = Date()
         self.messages = []
+    }
+    
+    // Удобное свойство для UI
+    var formattedDate: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: lastModified, relativeTo: Date())
     }
 }
 

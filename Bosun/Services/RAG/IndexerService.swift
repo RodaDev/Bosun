@@ -44,7 +44,7 @@ actor IndexerService {
             let existingChunks = try context.fetch(FetchDescriptor<CodeChunk>())
             var indexedFiles: [String: Date] = [:]
             for chunk in existingChunks {
-                indexedFiles[chunk.filePath] = chunk.fileModifiedDate
+                indexedFiles[chunk.filePath] = chunk.fileModifiedDate ?? .distantPast
             }
             
             guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }

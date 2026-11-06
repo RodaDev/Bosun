@@ -66,6 +66,7 @@ final class ChatViewModel {
         self.completedToolCalls = []
     }
 
+    // Возвращаем context обратно в параметры, чтобы использовать его для save
     func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, context: ModelContext) {
         guard canSend, let model = selectedModelId, let session = activeSession else { return }
         
@@ -76,20 +77,26 @@ final class ChatViewModel {
         activeToolCalls = []
         completedToolCalls = []
         pendingApprovals = []
+        sessionContext = []
         
         let userMsg = ChatMessage(role: .user, content: text)
         messages.append(userMsg)
         
-        // Сохраняем в БД
         let storedUser = StoredMessage(from: userMsg)
         storedUser.session = session
         context.insert(storedUser)
         
-        if session.title == "Новый чат" {
+        if session.title == "Новый диалог" {
             session.title = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
         }
         session.lastModified = Date()
-        try? context.save()
+        
+        do {
+            try context.save()
+        } catch {
+            print("ОШИБКА СОХРАНЕНИЯ В БАЗУ: \(error)")
+        }
+        
         isRunning = true
 
         let core = AgentCore(
@@ -103,13 +110,10 @@ final class ChatViewModel {
             }
         )
         
-        let contextToSend = sessionContext
-        sessionContext = []
-        let history = contextToSend.isEmpty ? messages.dropLast() : messages.dropLast()
+        let historyToSend = self.messages
 
         currentTask = Task {
             var textBuffer = ""
-            let historyToSend = await MainActor.run { self.messages }
             
             do {
                 let stream = try await core.run(history: historyToSend, sessionContext: [])
@@ -130,6 +134,7 @@ final class ChatViewModel {
                             stored.session = session
                             context.insert(stored)
                             try? context.save()
+                            
                             textBuffer = ""
                             self.streamingText = ""
                             self.activeToolCalls.append(call)
@@ -162,11 +167,11 @@ final class ChatViewModel {
                         let stored = StoredMessage(from: msg)
                         stored.session = session
                         context.insert(stored)
-                        try? context.save()
                     }
                     self.streamingText = ""
                     self.isRunning = false
                     session.lastModified = Date()
+                    try? context.save()
                     Task { await self.loadTree(from: projectMap) }
                     Task { await self.refreshBalance() }
                 }
@@ -178,11 +183,11 @@ final class ChatViewModel {
                         let stored = StoredMessage(from: msg)
                         stored.session = session
                         context.insert(stored)
-                        try? context.save()
                     }
                     self.error = error.localizedDescription
                     self.streamingText = ""
                     self.isRunning = false
+                    try? context.save()
                 }
             }
         }
