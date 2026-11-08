@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A9871D330A0A351004985BD /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9871D230A0A351004985BD /* RunCommandTool.swift */; };
+		0A9871D430A0A351004985BD /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9871D230A0A351004985BD /* RunCommandTool.swift */; };
 		0AA1EE9491C38A1B1F2C6739 /* ToolCallCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C3179A91C35CC7AB08125D /* ToolCallCard.swift */; };
 		0F479AA91D918ADF656ED2A9 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5C8751EBE427E0E8B40EE9 /* SmokeTests.swift */; };
 		10B24A39EC6BD2E82A3BF977 /* SandboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42622F11E456F53C9E139CB /* SandboxTests.swift */; };
@@ -85,6 +87,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0A9871D230A0A351004985BD /* RunCommandTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunCommandTool.swift; sourceTree = "<group>"; };
 		0D7BFBFD90EBA2E114A12B5F /* ChatAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAttachment.swift; sourceTree = "<group>"; };
 		0FDFE219D49A08A7BEFB08EF /* ChatViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModelTests.swift; sourceTree = "<group>"; };
 		1240CFE5D2E8AC22B4026A05 /* ToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCall.swift; sourceTree = "<group>"; };
@@ -287,6 +290,7 @@
 		A77464521507A8600F5C6F23 /* Build */ = {
 			isa = PBXGroup;
 			children = (
+				0A9871D230A0A351004985BD /* RunCommandTool.swift */,
 				2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */,
 			);
 			path = Build;
@@ -535,6 +539,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				82504DFBECEFA558215A66B1 /* ChatViewModelTests.swift in Sources */,
+				0A9871D330A0A351004985BD /* RunCommandTool.swift in Sources */,
 				448BC03B83AD2E7ECF7BC7CE /* MockTransport.swift in Sources */,
 				10B24A39EC6BD2E82A3BF977 /* SandboxTests.swift in Sources */,
 				0F479AA91D918ADF656ED2A9 /* SmokeTests.swift in Sources */,
@@ -547,6 +552,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FDAE7AD719BBEE33E5B92EA9 /* AgentCore.swift in Sources */,
+				0A9871D430A0A351004985BD /* RunCommandTool.swift in Sources */,
 				21D0B2E7F64AE9CD9C0F2F1F /* AgentEvent.swift in Sources */,
 				ECB1859E0E9CCDB255A60EB6 /* AgentTool.swift in Sources */,
 				479FDD648A0BECFEC81B849F /* AppEnvironment.swift in Sources */,

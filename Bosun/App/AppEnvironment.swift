@@ -21,7 +21,7 @@ final class AppEnvironment {
     
     var modelContext: ModelContext?
     var indexState = IndexState()
-    var projectRules: String? // <-- Новое свойство
+    var projectRules: String?
     
     var projectRoot: URL? {
         didSet {
@@ -35,7 +35,6 @@ final class AppEnvironment {
                 self.sandbox = box; self.symbolIndex = idx; self.projectMap = map; self.gitService = git
                 self.indexerService = IndexerService(sandbox: box, client: openRouter, gitService: git)
                 
-                // ЧИТАЕМ ПРАВИЛА ПРОЕКТА
                 let rulesURL = root.appendingPathComponent(".bosunrules")
                 if let rulesText = try? String(contentsOf: rulesURL, encoding: .utf8) {
                     self.projectRules = rulesText
@@ -48,7 +47,8 @@ final class AppEnvironment {
                     ReadSymbolTool(sandbox: box, index: idx), SearchTool(sandbox: box),
                     FindSymbolTool(index: idx), ListSymbolsTool(sandbox: box, index: idx),
                     WriteFileTool(sandbox: box), EditFileTool(sandbox: box),
-                    RunXcodebuildTool(runner: runner), GitStatusTool(gitService: git), GitDiffTool(gitService: git)
+                    RunXcodebuildTool(runner: runner), RunCommandTool(sandbox: box), // <-- НОВЫЙ ИНСТРУМЕНТ
+                    GitStatusTool(gitService: git), GitDiffTool(gitService: git)
                 ]
                 if let ctx = modelContext {
                     tools.append(SemanticSearchTool(client: openRouter, context: ctx))
