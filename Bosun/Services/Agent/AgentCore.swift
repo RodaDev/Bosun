@@ -43,7 +43,7 @@ actor AgentCore {
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
                 
-                var consecutiveBuildFailures = 0
+                var consecutiveFailures = 0 // Переименовали из buildFailures
                 var lastToolCallHash: Int = 0
                 var duplicateCallCount = 0
                 
@@ -105,8 +105,8 @@ actor AgentCore {
                         if !accumulatedText.isEmpty {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
-                        if consecutiveBuildFailures > 0 && consecutiveBuildFailures <= 3 {
-                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Исправь ошибки."))
+                        if consecutiveFailures > 0 && consecutiveFailures <= 3 {
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ИЛИ ТЕСТЫ ВСЁ ЕЩЕ ПАДАЮТ. Ты должен исправить ошибки, иначе задача не выполнена."))
                             continue
                         }
                         continuation.finish()
@@ -127,12 +127,21 @@ actor AgentCore {
                             continuation.yield(.toolResult(result))
                             messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
                             
+                            // AUTO-FIX ДЛЯ СБОРКИ И ТЕСТОВ
                             if call.function.name == "run_xcodebuild" || call.function.name == "run_build" {
                                 if result.content.contains("error:") || result.content.contains("BUILD FAILED") || result.isError {
-                                    consecutiveBuildFailures += 1
+                                    consecutiveFailures += 1
                                     messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Проанализируй ошибки выше и исправь их."))
                                 } else {
-                                    consecutiveBuildFailures = 0
+                                    consecutiveFailures = 0
+                                }
+                            } else if call.function.name == "run_command" && call.function.arguments.contains("test") {
+                                // Если запускали тесты и код выхода не 0 (или есть ошибки)
+                                if !result.content.contains("Код выхода: 0") || result.isError {
+                                    consecutiveFailures += 1
+                                    messages.append(ChatMessage(role: .system, content: "ТЕСТЫ УПАЛИ. Проанализируй лог выше и исправь код, чтобы тесты прошли."))
+                                } else {
+                                    consecutiveFailures = 0
                                 }
                             }
                         }
@@ -146,6 +155,11 @@ actor AgentCore {
         }
     }
     
+    // ... (sanitizeHistory, summarize, compressIfNeeded остаются без изменений)
+    // Вставьте их сюда из предыдущего файла.
+}
+
+extension AgentCore {
     private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var sanitized: [ChatMessage] = []
         var pendingToolCallIds: Set<String> = []
