@@ -26,7 +26,7 @@ actor AgentCore {
         self.approvalHandler = approvalHandler
     }
     
-    func run(history: [ChatMessage], sessionContext: [ChatMessage] = []) async throws -> AsyncThrowingStream<AgentEvent, Error> {
+    func run(history: [ChatMessage], sessionContext: [ChatMessage] = [], maxIterations: Int = 25) async throws -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 let tree = await projectMap?.getTextTree()
@@ -43,18 +43,22 @@ actor AgentCore {
                 let tools = await runtime?.openRouterTools ?? []
                 let useTools = !tools.isEmpty
                 
-                var consecutiveFailures = 0 // Переименовали из buildFailures
+                var hasModifiedSourceCode = false
+                var hasWrittenTests = false
+                var hasRunTests = false
+                var consecutiveFailures = 0
                 var lastToolCallHash: Int = 0
                 var duplicateCallCount = 0
                 
-                for step in 0..<25 {
+                // ИСПОЛЬЗУЕМ ПЕРЕДАННЫЙ ЛИМИТ
+                for step in 0..<maxIterations {
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
                     
                     var messagesToSend = messages
                     if step > 0 && !lastUserMessage.isEmpty {
                         let anchor = ChatMessage(
-                            role: .system, 
+                            role: .system,
                             content: "КРИТИЧЕСКИ ВАЖНО: Твоя задача — выполнить это: \"\(lastUserMessage)\". Переходи к действиям."
                         )
                         messagesToSend.append(anchor)
@@ -62,8 +66,8 @@ actor AgentCore {
                     
                     do {
                         let stream = try await client.streamCompletion(
-                            model: model, 
-                            messages: messagesToSend, 
+                            model: model,
+                            messages: messagesToSend,
                             tools: useTools ? tools : nil
                         )
                         
@@ -105,10 +109,48 @@ actor AgentCore {
                         if !accumulatedText.isEmpty {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
-                        if consecutiveFailures > 0 && consecutiveFailures <= 3 {
-                            messages.append(ChatMessage(role: .system, content: "СБОРКА ИЛИ ТЕСТЫ ВСЁ ЕЩЕ ПАДАЮТ. Ты должен исправить ошибки, иначе задача не выполнена."))
+                        
+                        // ПРИНУДИТЕЛЬНЫЙ TDD
+                        if hasModifiedSourceCode && !hasWrittenTests {
+                            messages.append(ChatMessage(role: .system, content: "Ты изменил исходный код, но не написал ни одного теста. По правилам проекта ты ОБЯЗАН написать Unit-тест. Создай файл с тестом и запусти его."))
                             continue
                         }
+                        
+                        if hasModifiedSourceCode && hasWrittenTests && !hasRunTests {
+                            messages.append(ChatMessage(role: .system, content: "Ты написал тесты, но не запустил их. Используй `run_command`, чтобы запустить тесты и убедиться, что они проходят."))
+                            continue
+                        }
+                        
+                        // КОМПИЛЯТОР-СТРАЖ (МОЛЧАЛИВЫЙ)
+                        if hasModifiedSourceCode {
+                            if let runtime = runtime {
+                                continuation.yield(.textDelta("\n\n*[Система: Запуск автоматической проверки компиляции...]*\n"))
+                                
+                                let checkCall = ToolCall(id: UUID().uuidString, type: "function", function: ToolCall.Function(name: "run_xcodebuild", arguments: "{}"))
+                                continuation.yield(.toolCallStarted(checkCall))
+                                let result = await runtime.execute(checkCall)
+                                continuation.yield(.toolResult(result))
+                                
+                                if result.isError || result.content.contains("error:") || result.content.contains("BUILD FAILED") {
+                                    // Если упало, добавляем в историю, чтобы модель исправила
+                                    messages.append(ChatMessage(role: .assistant, content: "Запускаю сборку для проверки...", toolCalls: [checkCall]))
+                                    messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: checkCall.id))
+                                    messages.append(ChatMessage(role: .system, content: "СБОРКА ПРОВАЛЕНА. Исправь ошибки компиляции, которые показаны выше."))
+                                    continue
+                                } else {
+                                    // Если успешно — просто завершаем
+                                    messages.append(ChatMessage(role: .system, content: "Сборка прошла успешно."))
+                                    continuation.finish()
+                                    return
+                                }
+                            }
+                        }
+                        
+                        if consecutiveFailures > 0 && consecutiveFailures <= 3 {
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ИЛИ ТЕСТЫ ВСЁ ЕЩЕ ПАДАЮТ. Ты должен исправить ошибки."))
+                            continue
+                        }
+                        
                         continuation.finish()
                         return
                     }
@@ -127,19 +169,28 @@ actor AgentCore {
                             continuation.yield(.toolResult(result))
                             messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: result.toolCallId))
                             
-                            // AUTO-FIX ДЛЯ СБОРКИ И ТЕСТОВ
-                            if call.function.name == "run_xcodebuild" || call.function.name == "run_build" {
-                                if result.content.contains("error:") || result.content.contains("BUILD FAILED") || result.isError {
+                            if approved && (call.function.name == "edit_file" || call.function.name == "write_file") {
+                                if call.function.arguments.contains("Tests/") || call.function.arguments.contains("Tests.swift") {
+                                    hasWrittenTests = true
+                                } else if call.function.arguments.contains(".swift") {
+                                    hasModifiedSourceCode = true
+                                }
+                            }
+                            
+                            if call.function.name == "run_command" && call.function.arguments.contains("test") {
+                                hasRunTests = true
+                                if !result.content.contains("Код выхода: 0") || result.isError {
                                     consecutiveFailures += 1
-                                    messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Проанализируй ошибки выше и исправь их."))
+                                    messages.append(ChatMessage(role: .system, content: "ТЕСТЫ УПАЛИ. Исправь код."))
                                 } else {
                                     consecutiveFailures = 0
                                 }
-                            } else if call.function.name == "run_command" && call.function.arguments.contains("test") {
-                                // Если запускали тесты и код выхода не 0 (или есть ошибки)
-                                if !result.content.contains("Код выхода: 0") || result.isError {
+                            }
+                            
+                            if call.function.name == "run_xcodebuild" || call.function.name == "run_build" {
+                                if result.content.contains("error:") || result.content.contains("BUILD FAILED") || result.isError {
                                     consecutiveFailures += 1
-                                    messages.append(ChatMessage(role: .system, content: "ТЕСТЫ УПАЛИ. Проанализируй лог выше и исправь код, чтобы тесты прошли."))
+                                    messages.append(ChatMessage(role: .system, content: "СБОРКА УПАЛА. Исправь ошибки."))
                                 } else {
                                     consecutiveFailures = 0
                                 }
@@ -149,17 +200,14 @@ actor AgentCore {
                     
                     continuation.yield(.checkpoint(messages))
                 }
-                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Достигнут лимит шагов."]))
+                continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Достигнут лимит шагов (\(maxIterations))."]))
             }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
     
-    // ... (sanitizeHistory, summarize, compressIfNeeded остаются без изменений)
-    // Вставьте их сюда из предыдущего файла.
-}
-
-extension AgentCore {
+    // MARK: - Helpers
+    
     private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var sanitized: [ChatMessage] = []
         var pendingToolCallIds: Set<String> = []

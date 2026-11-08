@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showResetAlert = false
 
     var body: some View {
+        @Bindable var settings = env.settings
         Form {
             Section("OpenRouter") {
                 LabeledContent("API key", value: env.settingsVM.hasKey ? "сохранён" : "не задан")
@@ -14,6 +15,11 @@ struct SettingsView: View {
                     env.settingsVM.removeAPIKey()
                 }
                 .disabled(!env.settingsVM.hasKey)
+            }
+            
+            Section("Агент") {
+                Stepper("Лимит итераций: \(settings.maxIterations)", value: $settings.maxIterations, in: 10...200, step: 10)
+                    .help("Максимальное количество шагов, которое агент может сделать за один запрос.")
             }
             
             Section("Данные приложения") {

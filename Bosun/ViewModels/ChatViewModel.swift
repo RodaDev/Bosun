@@ -1,12 +1,14 @@
 import Foundation
 import Observation
 import SwiftData
+import AppKit
 
 @MainActor
 @Observable
 final class ChatViewModel {
     var draft: String = ""
     var messages: [ChatMessage] = []
+    var pendingAttachments: [ChatAttachment] = []
     var streamingText: String = ""
     var isRunning: Bool = false
     var error: String?
@@ -14,7 +16,7 @@ final class ChatViewModel {
     
     var activeSession: ChatSession?
     var sessionContext: [ChatMessage] = []
-    var pendingAttachments: [ChatAttachment] = []
+    
     var projectNodes: [ProjectNode] = []
     var activeToolCalls: [ToolCall] = []
     var completedToolCalls: [ToolResult] = []
@@ -40,7 +42,8 @@ final class ChatViewModel {
     }
 
     var canSend: Bool {
-        !isRunning && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModelId != nil && activeSession != nil
+        let hasInput = !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pendingAttachments.isEmpty
+        return !isRunning && hasInput && selectedModelId != nil && activeSession != nil
     }
 
     func loadTree(from map: ProjectMap?) async {
@@ -64,8 +67,9 @@ final class ChatViewModel {
         self.streamingText = ""
         self.activeToolCalls = []
         self.completedToolCalls = []
+        self.pendingAttachments = []
     }
-    
+
     func addFile(url: URL) {
         let ext = url.pathExtension.lowercased()
         let isImage = ["png", "jpg", "jpeg", "heic"].contains(ext)
@@ -88,11 +92,11 @@ final class ChatViewModel {
     func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, projectRules: String?, context: ModelContext) {
         guard canSend, let model = selectedModelId, let session = activeSession else { return }
         
-        
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         let atts = pendingAttachments
-        pendingAttachments = []
+        
         draft = ""
+        pendingAttachments = []
         error = nil
         streamingText = ""
         activeToolCalls = []
@@ -108,7 +112,8 @@ final class ChatViewModel {
         context.insert(storedUser)
         
         if session.title == "Новый диалог" {
-            session.title = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
+            let previewText = text.isEmpty ? atts.first?.fileName ?? "Вложение" : text
+            session.title = String(previewText.prefix(30)) + (previewText.count > 30 ? "..." : "")
         }
         session.lastModified = Date()
         try? context.save()
@@ -128,12 +133,13 @@ final class ChatViewModel {
         )
         
         let historyToSend = self.messages
+        let maxIterations = settings.maxIterations // <-- Берем лимит из настроек
 
         currentTask = Task {
             var textBuffer = ""
             
             do {
-                let stream = try await core.run(history: historyToSend, sessionContext: [])
+                let stream = try await core.run(history: historyToSend, sessionContext: [], maxIterations: maxIterations)
                 
                 for try await event in stream {
                     if Task.isCancelled { break }
