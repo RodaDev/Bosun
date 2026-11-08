@@ -20,47 +20,37 @@ struct Composer: View {
                                 if att.type == .image { Image(systemName: "photo").foregroundStyle(.blue) }
                                 else { Image(systemName: "doc.text").foregroundStyle(.orange) }
                                 Text(att.fileName).lineLimit(1).font(.caption)
-                                Button {
-                                    vm.pendingAttachments.removeAll { $0.id == att.id }
-                                } label: {
+                                Button { vm.pendingAttachments.removeAll { $0.id == att.id } } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
+                                }.buttonStyle(.plain)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
                             .background(Color.secondary.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
-                    }
-                    .padding(.horizontal, 12)
+                    }.padding(.horizontal, 12)
                 }
             }
 
             HStack(spacing: 8) {
-                Button { selectFile() } label: { Image(systemName: "paperclip") }
-                    .buttonStyle(.borderless)
-                Button { showPicker = true } label: { Label(vm.selectedModelId ?? "Модель", systemImage: "cpu").labelStyle(.titleAndIcon) }
-                    .buttonStyle(.borderless)
+                Button { selectFile() } label: { Image(systemName: "paperclip") }.buttonStyle(.borderless)
+                Button { showPicker = true } label: { Label(vm.selectedModelId ?? "Модель", systemImage: "cpu").labelStyle(.titleAndIcon) }.buttonStyle(.borderless)
                 Spacer()
                 if vm.isRunning { Button("Стоп", role: .destructive) { vm.cancel() } }
-            }
-            .font(.caption)
+            }.font(.caption)
 
             HStack(alignment: .bottom) {
                 TextField("Сообщение агенту…", text: $vm.draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
                     .onSubmit { 
-                        Task { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, projectRules: env.projectRules, context: context) } 
+                        Task { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, projectRules: env.projectRules, projectMemory: env.projectMemory, context: context) } 
                     }
                 
-                if vm.isRunning && vm.streamingText.isEmpty {
-                    ProgressView().controlSize(.small).padding(.bottom, 4)
-                }
+                if vm.isRunning && vm.streamingText.isEmpty { ProgressView().controlSize(.small).padding(.bottom, 4) }
                 
                 Button {
-                    Task { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, projectRules: env.projectRules, context: context) }
+                    Task { vm.send(toolRuntime: env.toolRuntime, projectMap: env.projectMap, projectRules: env.projectRules, projectMemory: env.projectMemory, context: context) }
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.title2)
                 }
@@ -85,11 +75,7 @@ struct Composer: View {
     
     private func selectFile() {
         let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        if panel.runModal() == .OK {
-            for url in panel.urls { vm.addFile(url: url) }
-        }
+        panel.canChooseFiles = true; panel.canChooseDirectories = false; panel.allowsMultipleSelection = true
+        if panel.runModal() == .OK { for url in panel.urls { vm.addFile(url: url) } }
     }
 }

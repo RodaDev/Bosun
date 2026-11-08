@@ -73,23 +73,13 @@ final class ChatViewModel {
     func addFile(url: URL) {
         let ext = url.pathExtension.lowercased()
         let isImage = ["png", "jpg", "jpeg", "heic"].contains(ext)
-        
         guard let data = try? Data(contentsOf: url) else { return }
-        
-        if data.count > 5 * 1024 * 1024 {
-            self.error = "Файл слишком большой (макс. 5 МБ)"
-            return
-        }
-        
-        let attachment = ChatAttachment(
-            fileName: url.lastPathComponent,
-            type: isImage ? .image : .text,
-            data: data
-        )
+        if data.count > 5 * 1024 * 1024 { self.error = "Файл слишком большой (макс. 5 МБ)"; return }
+        let attachment = ChatAttachment(fileName: url.lastPathComponent, type: isImage ? .image : .text, data: data)
         pendingAttachments.append(attachment)
     }
 
-    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, projectRules: String?, context: ModelContext) {
+    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, projectRules: String?, projectMemory: String?, context: ModelContext) {
         guard canSend, let model = selectedModelId, let session = activeSession else { return }
         
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -126,6 +116,7 @@ final class ChatViewModel {
             model: model,
             projectMap: projectMap,
             projectRules: projectRules,
+            projectMemory: projectMemory, // <-- ПЕРЕДАЕМ ПАМЯТЬ
             approvalHandler: { [weak self] reqs in
                 guard let self = self else { return false }
                 return await self.requestApproval(reqs)
@@ -133,7 +124,7 @@ final class ChatViewModel {
         )
         
         let historyToSend = self.messages
-        let maxIterations = settings.maxIterations // <-- Берем лимит из настроек
+        let maxIterations = settings.maxIterations
 
         currentTask = Task {
             var textBuffer = ""

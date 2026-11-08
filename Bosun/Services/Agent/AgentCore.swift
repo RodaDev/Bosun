@@ -6,6 +6,7 @@ actor AgentCore {
     private let model: String
     private let projectMap: ProjectMap?
     private let projectRules: String?
+    private let projectMemory: String?
     private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool
     
     private let contextLimit = 15000
@@ -16,6 +17,7 @@ actor AgentCore {
         model: String,
         projectMap: ProjectMap?,
         projectRules: String?,
+        projectMemory: String?,
         approvalHandler: @Sendable @escaping ([ApprovalRequest]) async -> Bool
     ) {
         self.client = client
@@ -23,6 +25,7 @@ actor AgentCore {
         self.model = model
         self.projectMap = projectMap
         self.projectRules = projectRules
+        self.projectMemory = projectMemory
         self.approvalHandler = approvalHandler
     }
     
@@ -30,7 +33,7 @@ actor AgentCore {
         AsyncThrowingStream { continuation in
             let task = Task {
                 let tree = await projectMap?.getTextTree()
-                let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree, projectRules: projectRules)
+                let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree, projectRules: projectRules, projectMemory: projectMemory)
                 
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
@@ -50,7 +53,6 @@ actor AgentCore {
                 var lastToolCallHash: Int = 0
                 var duplicateCallCount = 0
                 
-                // ИСПОЛЬЗУЕМ ПЕРЕДАННЫЙ ЛИМИТ
                 for step in 0..<maxIterations {
                     var accumulatedText = ""
                     var accumulatedToolCalls: [ToolCall] = []
@@ -110,18 +112,16 @@ actor AgentCore {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
                         
-                        // ПРИНУДИТЕЛЬНЫЙ TDD
                         if hasModifiedSourceCode && !hasWrittenTests {
-                            messages.append(ChatMessage(role: .system, content: "Ты изменил исходный код, но не написал ни одного теста. По правилам проекта ты ОБЯЗАН написать Unit-тест. Создай файл с тестом и запусти его."))
+                            messages.append(ChatMessage(role: .system, content: "Ты изменил исходный код, но не написал ни одного теста. По правилам проекта ты ОБЯЗАН написать Unit-тест."))
                             continue
                         }
                         
                         if hasModifiedSourceCode && hasWrittenTests && !hasRunTests {
-                            messages.append(ChatMessage(role: .system, content: "Ты написал тесты, но не запустил их. Используй `run_command`, чтобы запустить тесты и убедиться, что они проходят."))
+                            messages.append(ChatMessage(role: .system, content: "Ты написал тесты, но не запустил их. Используй `run_command`, чтобы запустить тесты."))
                             continue
                         }
                         
-                        // КОМПИЛЯТОР-СТРАЖ (МОЛЧАЛИВЫЙ)
                         if hasModifiedSourceCode {
                             if let runtime = runtime {
                                 continuation.yield(.textDelta("\n\n*[Система: Запуск автоматической проверки компиляции...]*\n"))
@@ -132,13 +132,11 @@ actor AgentCore {
                                 continuation.yield(.toolResult(result))
                                 
                                 if result.isError || result.content.contains("error:") || result.content.contains("BUILD FAILED") {
-                                    // Если упало, добавляем в историю, чтобы модель исправила
                                     messages.append(ChatMessage(role: .assistant, content: "Запускаю сборку для проверки...", toolCalls: [checkCall]))
                                     messages.append(ChatMessage(role: .tool, content: result.content, toolCallId: checkCall.id))
-                                    messages.append(ChatMessage(role: .system, content: "СБОРКА ПРОВАЛЕНА. Исправь ошибки компиляции, которые показаны выше."))
+                                    messages.append(ChatMessage(role: .system, content: "СБОРКА ПРОВАЛЕНА. Исправь ошибки компиляции."))
                                     continue
                                 } else {
-                                    // Если успешно — просто завершаем
                                     messages.append(ChatMessage(role: .system, content: "Сборка прошла успешно."))
                                     continuation.finish()
                                     return
@@ -147,7 +145,7 @@ actor AgentCore {
                         }
                         
                         if consecutiveFailures > 0 && consecutiveFailures <= 3 {
-                            messages.append(ChatMessage(role: .system, content: "СБОРКА ИЛИ ТЕСТЫ ВСЁ ЕЩЕ ПАДАЮТ. Ты должен исправить ошибки."))
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ИЛИ ТЕСТЫ ВСЁ ЕЩЕ ПАДАЮТ. Исправь ошибки."))
                             continue
                         }
                         
@@ -206,12 +204,9 @@ actor AgentCore {
         }
     }
     
-    // MARK: - Helpers
-    
     private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var sanitized: [ChatMessage] = []
         var pendingToolCallIds: Set<String> = []
-        
         for msg in history {
             if msg.role == .assistant, let calls = msg.toolCalls {
                 sanitized.append(msg)
@@ -225,12 +220,10 @@ actor AgentCore {
                 sanitized.append(msg)
             }
         }
-        
         if !pendingToolCallIds.isEmpty {
             sanitized = sanitized.filter { msg in
                 if msg.role == .assistant, let calls = msg.toolCalls {
-                    let hasMissing = calls.contains { pendingToolCallIds.contains($0.id) }
-                    return !hasMissing
+                    return !calls.contains { pendingToolCallIds.contains($0.id) }
                 }
                 return true
             }

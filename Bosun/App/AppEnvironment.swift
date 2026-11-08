@@ -22,6 +22,7 @@ final class AppEnvironment {
     var modelContext: ModelContext?
     var indexState = IndexState()
     var projectRules: String?
+    var projectMemory: String? // <-- Память проекта в виде текста
     
     var projectRoot: URL? {
         didSet {
@@ -47,12 +48,28 @@ final class AppEnvironment {
                     ReadSymbolTool(sandbox: box, index: idx), SearchTool(sandbox: box),
                     FindSymbolTool(index: idx), ListSymbolsTool(sandbox: box, index: idx),
                     WriteFileTool(sandbox: box), EditFileTool(sandbox: box),
-                    RunXcodebuildTool(runner: runner), RunCommandTool(sandbox: box), // <-- НОВЫЙ ИНСТРУМЕНТ
+                    RunXcodebuildTool(runner: runner), RunCommandTool(sandbox: box),
                     GitStatusTool(gitService: git), GitDiffTool(gitService: git)
                 ]
+                
                 if let ctx = modelContext {
                     tools.append(SemanticSearchTool(client: openRouter, context: ctx))
+                    tools.append(UpdateMemoryTool(projectRoot: root, context: ctx))
+                    
+                    // Загружаем память для этого проекта
+                    let path = root.path
+                    let descriptor = FetchDescriptor<ProjectMemory>(
+                        predicate: #Predicate { $0.projectPath == path },
+                        sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+                    )
+                    if let memories = try? ctx.fetch(descriptor), !memories.isEmpty {
+                        let facts = memories.map { "- \($0.fact)" }.joined(separator: "\n")
+                        self.projectMemory = facts
+                    } else {
+                        self.projectMemory = nil
+                    }
                 }
+                
                 self.toolRuntime = ToolRuntime(registry: ToolRegistry(tools: tools))
                 settings.projectRootPath = root.path
                 self.indexState = IndexState()
@@ -63,6 +80,7 @@ final class AppEnvironment {
                 gitService = nil; indexerService = nil; settings.projectRootPath = nil
                 self.indexState = IndexState()
                 self.projectRules = nil
+                self.projectMemory = nil
             }
         }
     }

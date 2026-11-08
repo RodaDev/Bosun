@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A9871D330A0A351004985BD /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9871D230A0A351004985BD /* RunCommandTool.swift */; };
-		0A9871D430A0A351004985BD /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9871D230A0A351004985BD /* RunCommandTool.swift */; };
 		0AA1EE9491C38A1B1F2C6739 /* ToolCallCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C3179A91C35CC7AB08125D /* ToolCallCard.swift */; };
 		0F479AA91D918ADF656ED2A9 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5C8751EBE427E0E8B40EE9 /* SmokeTests.swift */; };
 		10B24A39EC6BD2E82A3BF977 /* SandboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42622F11E456F53C9E139CB /* SandboxTests.swift */; };
@@ -19,6 +17,7 @@
 		1BE6216C255F32DE7902AD51 /* FindSymbolTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5348339AB18AF18F7443B6D1 /* FindSymbolTool.swift */; };
 		1FDCA4965BAECB8BE548E3DD /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B1D05A9054A8C943B1CC03 /* GitService.swift */; };
 		21D0B2E7F64AE9CD9C0F2F1F /* AgentEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF426C4D4B09AD62AA1F0308 /* AgentEvent.swift */; };
+		2322E5434110301DC9DF1CBC /* UpdateMemoryTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729E439FE15AA1736BA8840A /* UpdateMemoryTool.swift */; };
 		26686EC1BAD0B86F8C446F4B /* ModelInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */; };
 		2D8B3383D4BC62C35CC67190 /* EditFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */; };
 		353BD04D864C4253AC0BD6C9 /* ToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1240CFE5D2E8AC22B4026A05 /* ToolCall.swift */; };
@@ -67,6 +66,8 @@
 		C83439B0335A8B8AABA6C70E /* Composer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B26890100FC183064EC5B3 /* Composer.swift */; };
 		CE35A970AD8C51A789AB5877 /* ListSymbolsTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A43B8053891C6F3045F8ED /* ListSymbolsTool.swift */; };
 		D6819F7450C93C906CD0471C /* URLSessionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCAC9BD1307236F5274331B /* URLSessionTransport.swift */; };
+		D770BFAD9AC15FCA4251D325 /* ProjectMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B727DEA1E98870306F8F69 /* ProjectMemory.swift */; };
+		D8A1B1C437D7621B8A5669F1 /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61B59A181DC60012D49CD50 /* RunCommandTool.swift */; };
 		D9791FBAEF6E54121DC78312 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E4CD9CBE5528AA5AA2E2E4 /* SettingsViewModel.swift */; };
 		DCE4202DD06BFED273A92EA0 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE2BBDF1FBC0419A1F49A39 /* ToolRegistry.swift */; };
 		E7F2724F7BD3563F29A4E20D /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A20A21E942620AF5628C31 /* SSEParser.swift */; };
@@ -87,7 +88,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0A9871D230A0A351004985BD /* RunCommandTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunCommandTool.swift; sourceTree = "<group>"; };
 		0D7BFBFD90EBA2E114A12B5F /* ChatAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAttachment.swift; sourceTree = "<group>"; };
 		0FDFE219D49A08A7BEFB08EF /* ChatViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModelTests.swift; sourceTree = "<group>"; };
 		1240CFE5D2E8AC22B4026A05 /* ToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCall.swift; sourceTree = "<group>"; };
@@ -116,6 +116,7 @@
 		60511E18F9DD125EF3164717 /* AgentTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
 		665A47CDFA7C47E3A4E4EE89 /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
 		6F55686036FC63BE15BB5183 /* XcodeBuildRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildRunner.swift; sourceTree = "<group>"; };
+		729E439FE15AA1736BA8840A /* UpdateMemoryTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateMemoryTool.swift; sourceTree = "<group>"; };
 		75B3E02C015759BB3D725F16 /* OpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterClient.swift; sourceTree = "<group>"; };
 		782FB3863F1C01CF4643522B /* CodeChunk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeChunk.swift; sourceTree = "<group>"; };
 		799C2749877212D190E0D37A /* SearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTool.swift; sourceTree = "<group>"; };
@@ -147,6 +148,7 @@
 		D41D5496C526276CE45BF694 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		D50F80904B18F0A1AB58540B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D590BBFB00D9C06A2326F10A /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
+		D61B59A181DC60012D49CD50 /* RunCommandTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunCommandTool.swift; sourceTree = "<group>"; };
 		D8279AA92BACF2B53650B88D /* WriteFileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteFileTool.swift; sourceTree = "<group>"; };
 		DBF2CF0960D982F1079064F7 /* ReadFileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadFileTool.swift; sourceTree = "<group>"; };
 		E42622F11E456F53C9E139CB /* SandboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxTests.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 		F0BEC8BABDDEBFC3CE0C0F4D /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		F0C3179A91C35CC7AB08125D /* ToolCallCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallCard.swift; sourceTree = "<group>"; };
 		F24B90263045D2CDD6A67787 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		F2B727DEA1E98870306F8F69 /* ProjectMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectMemory.swift; sourceTree = "<group>"; };
 		FD9B23FC3168BF8A8EDA8120 /* SemanticSearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticSearchTool.swift; sourceTree = "<group>"; };
 		FE07F185C6BD6AF21593A5EC /* Bosun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bosun.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -253,6 +256,7 @@
 			isa = PBXGroup;
 			children = (
 				5C35F350FC7ACA94A4CC227C /* EditFileTool.swift */,
+				729E439FE15AA1736BA8840A /* UpdateMemoryTool.swift */,
 				D8279AA92BACF2B53650B88D /* WriteFileTool.swift */,
 			);
 			path = Mutating;
@@ -290,7 +294,7 @@
 		A77464521507A8600F5C6F23 /* Build */ = {
 			isa = PBXGroup;
 			children = (
-				0A9871D230A0A351004985BD /* RunCommandTool.swift */,
+				D61B59A181DC60012D49CD50 /* RunCommandTool.swift */,
 				2C769ABE20988E9ADE94CB05 /* RunXcodebuildTool.swift */,
 			);
 			path = Build;
@@ -318,6 +322,7 @@
 				782FB3863F1C01CF4643522B /* CodeChunk.swift */,
 				52F0D9D0EC26A9DA27126BC1 /* IndexState.swift */,
 				43D5F2CF05BEAF3BF32F38F6 /* ModelInfo.swift */,
+				F2B727DEA1E98870306F8F69 /* ProjectMemory.swift */,
 				A75D33C9071ABE4AF61260C4 /* ProjectNode.swift */,
 				8870DA61B5B57CD4098F89D3 /* Symbol.swift */,
 				1240CFE5D2E8AC22B4026A05 /* ToolCall.swift */,
@@ -539,7 +544,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				82504DFBECEFA558215A66B1 /* ChatViewModelTests.swift in Sources */,
-				0A9871D330A0A351004985BD /* RunCommandTool.swift in Sources */,
 				448BC03B83AD2E7ECF7BC7CE /* MockTransport.swift in Sources */,
 				10B24A39EC6BD2E82A3BF977 /* SandboxTests.swift in Sources */,
 				0F479AA91D918ADF656ED2A9 /* SmokeTests.swift in Sources */,
@@ -552,7 +556,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				FDAE7AD719BBEE33E5B92EA9 /* AgentCore.swift in Sources */,
-				0A9871D430A0A351004985BD /* RunCommandTool.swift in Sources */,
 				21D0B2E7F64AE9CD9C0F2F1F /* AgentEvent.swift in Sources */,
 				ECB1859E0E9CCDB255A60EB6 /* AgentTool.swift in Sources */,
 				479FDD648A0BECFEC81B849F /* AppEnvironment.swift in Sources */,
@@ -584,12 +587,14 @@
 				B7B57CFFD9EA9F63EBDE0F5B /* OpenRouterClient.swift in Sources */,
 				B3F0351A70AD1C2F1351C8BA /* OpenRouterTransport.swift in Sources */,
 				6ED8416621DEE470537E65F1 /* ProjectMap.swift in Sources */,
+				D770BFAD9AC15FCA4251D325 /* ProjectMemory.swift in Sources */,
 				EE44F59405F6DA87B2512D28 /* ProjectNode.swift in Sources */,
 				9D953AA4A43397501C98961E /* ProjectTreeView.swift in Sources */,
 				B717CC7DD410D59E0A0323B5 /* PromptBuilder.swift in Sources */,
 				666EC666470491E7E14FC5BD /* ReadFileTool.swift in Sources */,
 				6873F2DEBB58CDEF834111DB /* ReadSymbolTool.swift in Sources */,
 				56069294DADD0073C252F37C /* RootView.swift in Sources */,
+				D8A1B1C437D7621B8A5669F1 /* RunCommandTool.swift in Sources */,
 				5F865F6B4B644759C3E75F2C /* RunXcodebuildTool.swift in Sources */,
 				E7F2724F7BD3563F29A4E20D /* SSEParser.swift in Sources */,
 				AEDC11E39B3E186FC90E31D5 /* Sandbox.swift in Sources */,
@@ -608,6 +613,7 @@
 				B30EEC4BC2B013437B1DC1E1 /* ToolResult.swift in Sources */,
 				ABD89E88D9B68AB8B0AE6861 /* ToolRuntime.swift in Sources */,
 				D6819F7450C93C906CD0471C /* URLSessionTransport.swift in Sources */,
+				2322E5434110301DC9DF1CBC /* UpdateMemoryTool.swift in Sources */,
 				5E2838A9A14336CC4239CAFF /* VectorMath.swift in Sources */,
 				42A15CADC643C62C9F8D587B /* WriteFileTool.swift in Sources */,
 				B2F3B9D780E6AC694E610A79 /* XcodeBuildRunner.swift in Sources */,

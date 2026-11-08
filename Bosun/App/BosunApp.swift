@@ -15,7 +15,7 @@ struct BosunApp: App {
                 }
             }
             .frame(minWidth: 1100, minHeight: 700)
-            .modelContainer(for: [ChatSession.self, StoredMessage.self, CodeChunk.self])
+            .modelContainer(for: [ChatSession.self, StoredMessage.self, CodeChunk.self, ProjectMemory.self]) // <-- Добавили ProjectMemory
         }
         .windowStyle(.titleBar)
         .commands { CommandGroup(replacing: .newItem) {} }
