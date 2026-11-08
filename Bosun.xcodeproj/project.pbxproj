@@ -65,6 +65,7 @@
 		BAEBC6442B2620EFCC0CEB95 /* SymbolIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBD3D79F8F7B5C86B214308F /* SymbolIndex.swift */; };
 		C83439B0335A8B8AABA6C70E /* Composer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B26890100FC183064EC5B3 /* Composer.swift */; };
 		CE35A970AD8C51A789AB5877 /* ListSymbolsTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A43B8053891C6F3045F8ED /* ListSymbolsTool.swift */; };
+		D638DDAEE2F9318025A8A64A /* FindUsagesTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA514B0EBBF6266BCFBC0354 /* FindUsagesTool.swift */; };
 		D6819F7450C93C906CD0471C /* URLSessionTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCAC9BD1307236F5274331B /* URLSessionTransport.swift */; };
 		D770BFAD9AC15FCA4251D325 /* ProjectMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B727DEA1E98870306F8F69 /* ProjectMemory.swift */; };
 		D8A1B1C437D7621B8A5669F1 /* RunCommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61B59A181DC60012D49CD50 /* RunCommandTool.swift */; };
@@ -159,6 +160,7 @@
 		F0C3179A91C35CC7AB08125D /* ToolCallCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallCard.swift; sourceTree = "<group>"; };
 		F24B90263045D2CDD6A67787 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F2B727DEA1E98870306F8F69 /* ProjectMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectMemory.swift; sourceTree = "<group>"; };
+		FA514B0EBBF6266BCFBC0354 /* FindUsagesTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindUsagesTool.swift; sourceTree = "<group>"; };
 		FD9B23FC3168BF8A8EDA8120 /* SemanticSearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticSearchTool.swift; sourceTree = "<group>"; };
 		FE07F185C6BD6AF21593A5EC /* Bosun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bosun.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -207,6 +209,7 @@
 			isa = PBXGroup;
 			children = (
 				5348339AB18AF18F7443B6D1 /* FindSymbolTool.swift */,
+				FA514B0EBBF6266BCFBC0354 /* FindUsagesTool.swift */,
 				4940B18F043306924EB942A1 /* ListDirTool.swift */,
 				43A43B8053891C6F3045F8ED /* ListSymbolsTool.swift */,
 				DBF2CF0960D982F1079064F7 /* ReadFileTool.swift */,
@@ -573,6 +576,7 @@
 				2D8B3383D4BC62C35CC67190 /* EditFileTool.swift in Sources */,
 				9D7B465D2F3FFC0CB27BD2A2 /* ExcludedPaths.swift in Sources */,
 				1BE6216C255F32DE7902AD51 /* FindSymbolTool.swift in Sources */,
+				D638DDAEE2F9318025A8A64A /* FindUsagesTool.swift in Sources */,
 				1FDCA4965BAECB8BE548E3DD /* GitService.swift in Sources */,
 				B2BB4F551509EC1B9CCC6CC2 /* IndexState.swift in Sources */,
 				AD6846075BFBA9E067196F53 /* IndexerService.swift in Sources */,

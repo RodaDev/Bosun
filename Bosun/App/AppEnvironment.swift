@@ -22,7 +22,7 @@ final class AppEnvironment {
     var modelContext: ModelContext?
     var indexState = IndexState()
     var projectRules: String?
-    var projectMemory: String? // <-- Память проекта в виде текста
+    var projectMemory: String?
     
     var projectRoot: URL? {
         didSet {
@@ -44,19 +44,25 @@ final class AppEnvironment {
                 }
                 
                 var tools: [AgentTool] = [
-                    ListDirTool(sandbox: box), ReadFileTool(sandbox: box, index: idx),
-                    ReadSymbolTool(sandbox: box, index: idx), SearchTool(sandbox: box),
-                    FindSymbolTool(index: idx), ListSymbolsTool(sandbox: box, index: idx),
-                    WriteFileTool(sandbox: box), EditFileTool(sandbox: box),
-                    RunXcodebuildTool(runner: runner), RunCommandTool(sandbox: box),
-                    GitStatusTool(gitService: git), GitDiffTool(gitService: git)
+                    ListDirTool(sandbox: box), 
+                    ReadFileTool(sandbox: box, index: idx),
+                    ReadSymbolTool(sandbox: box, index: idx), 
+                    SearchTool(sandbox: box),
+                    FindSymbolTool(index: idx), 
+                    FindUsagesTool(sandbox: box), // <-- НОВЫЙ ИНСТРУМЕНТ
+                    ListSymbolsTool(sandbox: box, index: idx),
+                    WriteFileTool(sandbox: box), 
+                    EditFileTool(sandbox: box),
+                    RunXcodebuildTool(runner: runner), 
+                    RunCommandTool(sandbox: box),
+                    GitStatusTool(gitService: git), 
+                    GitDiffTool(gitService: git)
                 ]
                 
                 if let ctx = modelContext {
                     tools.append(SemanticSearchTool(client: openRouter, context: ctx))
                     tools.append(UpdateMemoryTool(projectRoot: root, context: ctx))
                     
-                    // Загружаем память для этого проекта
                     let path = root.path
                     let descriptor = FetchDescriptor<ProjectMemory>(
                         predicate: #Predicate { $0.projectPath == path },
