@@ -14,9 +14,9 @@
             filePath = "Bosun/ViewModels/ChatViewModel.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "91"
-            endingLineNumber = "91"
-            landmarkName = "send(toolRuntime:projectMap:context:)"
+            startingLineNumber = "113"
+            endingLineNumber = "113"
+            landmarkName = "send(toolRuntime:projectMap:projectRules:context:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -30,9 +30,9 @@
             filePath = "Bosun/ViewModels/ChatViewModel.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "70"
-            endingLineNumber = "70"
-            landmarkName = "send(toolRuntime:projectMap:context:)"
+            startingLineNumber = "89"
+            endingLineNumber = "89"
+            landmarkName = "send(toolRuntime:projectMap:projectRules:context:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

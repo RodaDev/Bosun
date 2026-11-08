@@ -5,6 +5,7 @@ actor AgentCore {
     private let runtime: ToolRuntime?
     private let model: String
     private let projectMap: ProjectMap?
+    private let projectRules: String?
     private let approvalHandler: @Sendable ([ApprovalRequest]) async -> Bool
     
     private let contextLimit = 15000
@@ -14,12 +15,14 @@ actor AgentCore {
         runtime: ToolRuntime?,
         model: String,
         projectMap: ProjectMap?,
+        projectRules: String?,
         approvalHandler: @Sendable @escaping ([ApprovalRequest]) async -> Bool
     ) {
         self.client = client
         self.runtime = runtime
         self.model = model
         self.projectMap = projectMap
+        self.projectRules = projectRules
         self.approvalHandler = approvalHandler
     }
     
@@ -27,7 +30,7 @@ actor AgentCore {
         AsyncThrowingStream { continuation in
             let task = Task {
                 let tree = await projectMap?.getTextTree()
-                let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree)
+                let systemPrompt = PromptBuilder.buildSystemPrompt(tree: tree, projectRules: projectRules)
                 
                 var messages: [ChatMessage] = []
                 messages.append(ChatMessage(role: .system, content: systemPrompt))
@@ -51,7 +54,7 @@ actor AgentCore {
                     var messagesToSend = messages
                     if step > 0 && !lastUserMessage.isEmpty {
                         let anchor = ChatMessage(
-                            role: .system,
+                            role: .system, 
                             content: "КРИТИЧЕСКИ ВАЖНО: Твоя задача — выполнить это: \"\(lastUserMessage)\". Переходи к действиям."
                         )
                         messagesToSend.append(anchor)
@@ -59,8 +62,8 @@ actor AgentCore {
                     
                     do {
                         let stream = try await client.streamCompletion(
-                            model: model,
-                            messages: messagesToSend,
+                            model: model, 
+                            messages: messagesToSend, 
                             tools: useTools ? tools : nil
                         )
                         
@@ -83,13 +86,12 @@ actor AgentCore {
                         return
                     }
                     
-                    // ЗАЩИТА ОТ ЗАЦИКЛИВАНИЯ
                     if let firstCall = accumulatedToolCalls.first {
                         let callHash = (firstCall.function.name + firstCall.function.arguments).hashValue
                         if callHash == lastToolCallHash {
                             duplicateCallCount += 1
                             if duplicateCallCount >= 2 {
-                                continuation.yield(.textDelta("\n\n*[Система: Обнаружено зацикливание на одном и том же действии. Остановка.]*"))
+                                continuation.yield(.textDelta("\n\n*[Система: Обнаружено зацикливание. Остановка.]*"))
                                 continuation.finish(throwing: NSError(domain: "Agent", code: 0, userInfo: [NSLocalizedDescriptionKey: "Зацикливание на вызове инструмента."]))
                                 return
                             }
@@ -103,12 +105,10 @@ actor AgentCore {
                         if !accumulatedText.isEmpty {
                             messages.append(ChatMessage(role: .assistant, content: accumulatedText))
                         }
-                        
                         if consecutiveBuildFailures > 0 && consecutiveBuildFailures <= 3 {
-                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Ты должен использовать edit_file или write_file, чтобы исправить ошибки."))
+                            messages.append(ChatMessage(role: .system, content: "СБОРКА ВСЁ ЕЩЕ ПАДАЕТ. Исправь ошибки."))
                             continue
                         }
-                        
                         continuation.finish()
                         return
                     }
@@ -145,8 +145,6 @@ actor AgentCore {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
-    
-    // MARK: - Helpers
     
     private func sanitizeHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var sanitized: [ChatMessage] = []
@@ -185,9 +183,7 @@ actor AgentCore {
             else if msg.role == .assistant, !msg.content.isEmpty { textToSummarize += "Ассистент: \(msg.content)\n" }
             else if msg.role == .tool { textToSummarize += "Результат инструмента: \(msg.content.prefix(100))...\n" }
         }
-        
         let prompt = "Ты — система сжатия контекста. ГЛАВНАЯ ЗАДАЧА: \(task)\nНапиши краткое резюме (до 5 предложений)."
-        
         do {
             let stream = try await client.streamCompletion(model: "openai/gpt-4o-mini", messages: [
                 ChatMessage(role: .system, content: prompt),

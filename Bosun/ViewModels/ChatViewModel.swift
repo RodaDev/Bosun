@@ -14,7 +14,7 @@ final class ChatViewModel {
     
     var activeSession: ChatSession?
     var sessionContext: [ChatMessage] = []
-    
+    var pendingAttachments: [ChatAttachment] = []
     var projectNodes: [ProjectNode] = []
     var activeToolCalls: [ToolCall] = []
     var completedToolCalls: [ToolResult] = []
@@ -65,12 +65,33 @@ final class ChatViewModel {
         self.activeToolCalls = []
         self.completedToolCalls = []
     }
+    
+    func addFile(url: URL) {
+        let ext = url.pathExtension.lowercased()
+        let isImage = ["png", "jpg", "jpeg", "heic"].contains(ext)
+        
+        guard let data = try? Data(contentsOf: url) else { return }
+        
+        if data.count > 5 * 1024 * 1024 {
+            self.error = "Файл слишком большой (макс. 5 МБ)"
+            return
+        }
+        
+        let attachment = ChatAttachment(
+            fileName: url.lastPathComponent,
+            type: isImage ? .image : .text,
+            data: data
+        )
+        pendingAttachments.append(attachment)
+    }
 
-    // Возвращаем context обратно в параметры, чтобы использовать его для save
-    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, context: ModelContext) {
+    func send(toolRuntime: ToolRuntime?, projectMap: ProjectMap?, projectRules: String?, context: ModelContext) {
         guard canSend, let model = selectedModelId, let session = activeSession else { return }
         
+        
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let atts = pendingAttachments
+        pendingAttachments = []
         draft = ""
         error = nil
         streamingText = ""
@@ -79,7 +100,7 @@ final class ChatViewModel {
         pendingApprovals = []
         sessionContext = []
         
-        let userMsg = ChatMessage(role: .user, content: text)
+        let userMsg = ChatMessage(role: .user, content: text, attachments: atts.isEmpty ? nil : atts)
         messages.append(userMsg)
         
         let storedUser = StoredMessage(from: userMsg)
@@ -90,12 +111,7 @@ final class ChatViewModel {
             session.title = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
         }
         session.lastModified = Date()
-        
-        do {
-            try context.save()
-        } catch {
-            print("ОШИБКА СОХРАНЕНИЯ В БАЗУ: \(error)")
-        }
+        try? context.save()
         
         isRunning = true
 
@@ -104,6 +120,7 @@ final class ChatViewModel {
             runtime: toolRuntime,
             model: model,
             projectMap: projectMap,
+            projectRules: projectRules,
             approvalHandler: { [weak self] reqs in
                 guard let self = self else { return false }
                 return await self.requestApproval(reqs)

@@ -1,7 +1,7 @@
 import Foundation
 
 struct PromptBuilder {
-    static func buildSystemPrompt(tree: String?) -> String {
+    static func buildSystemPrompt(tree: String?, projectRules: String?) -> String {
         var prompt = """
         Ты — Bosun, полезный ИИ-ассистент для разработки на macOS.
         Ты работаешь внутри проекта пользователя.
@@ -10,6 +10,15 @@ struct PromptBuilder {
         
         if let tree = tree {
             prompt += "Структура проекта:\n\(tree)\n\n"
+        }
+        
+        if let rules = projectRules, !rules.isEmpty {
+            prompt += """
+            КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА ЭТОГО ПРОЕКТА (СОБЛЮДАЙ ИХ СТРОГО):
+            \(rules)
+            ========================================================
+            
+            """
         }
         
         prompt += """

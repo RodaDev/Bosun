@@ -19,7 +19,6 @@ final class ChatSession {
         self.messages = []
     }
     
-    // Удобное свойство для UI
     var formattedDate: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
@@ -35,6 +34,7 @@ final class StoredMessage {
     var toolCallsJson: String?
     var toolCallId: String?
     var timestamp: Date
+    var attachmentsJson: String? // <-- Храним вложения в JSON
     
     var session: ChatSession?
     
@@ -48,6 +48,9 @@ final class StoredMessage {
         if let calls = chatMessage.toolCalls, let data = try? JSONEncoder().encode(calls) {
             self.toolCallsJson = String(data: data, encoding: .utf8)
         }
+        if let atts = chatMessage.attachments, let data = try? JSONEncoder().encode(atts) {
+            self.attachmentsJson = String(data: data, encoding: .utf8)
+        }
     }
     
     func toChatMessage() -> ChatMessage {
@@ -55,12 +58,17 @@ final class StoredMessage {
         if let json = toolCallsJson, let data = json.data(using: .utf8) {
             calls = try? JSONDecoder().decode([ToolCall].self, from: data)
         }
+        var atts: [ChatAttachment]? = nil
+        if let json = attachmentsJson, let data = json.data(using: .utf8) {
+            atts = try? JSONDecoder().decode([ChatAttachment].self, from: data)
+        }
         return ChatMessage(
             id: id,
             role: ChatRole(rawValue: role) ?? .user,
             content: content,
             toolCalls: calls,
-            toolCallId: toolCallId
+            toolCallId: toolCallId,
+            attachments: atts
         )
     }
 }
